@@ -54,7 +54,6 @@ sub execute {
     # extract subject from CSR and add a context entry for it
     Crypt::PKCS10->setAPIversion(1);
 
-
     my $decoded = Crypt::PKCS10->new( $pkcs10,
         ignoreNonBase64 => 1,
         verifySignature => 0 );
@@ -212,33 +211,27 @@ sub execute {
 
     ##! 32: 'Merged DN ' . Dumper $hashed_dn
 
-    # Attributes, must be a list of OIDs, seperated by comma/blank
+    # Request Attributes
     my $attr = $self->param('req_attributes');
-    my $req_attr = {};
-    if ($attr) {
-        my @attr = split /[\s,]+/, $attr;
-        foreach my $oid (@attr) {
-            my $val = $decoded->attributes($oid);
-            if ($val) {
-                $req_attr->{$oid} =$val;
-            }
-         }
-         $param->{req_attributes} = $req_attr;
-         $source_ref->{req_attributes} = 'PKCS10';
+    my $req_attr = $self->hande_extensions( $attr, sub {
+        return $decoded->attributes(shift);
+    });
+
+    if ($req_attr) {
+        $param->{req_attributes} = $req_attr;
+        $source_ref->{req_attributes} = 'PKCS10';
     }
 
-    # Extensions, must be a list of OIDs, seperated by comma/blank
+    # Request Extensions
     my $ext = $self->param('req_extensions');
-    my $req_ext = {};
-    if ($ext) {
-        my @ext = split /[\s,]+/, $ext;
-        foreach my $oid (@ext) {
-            if ($decoded->extensionPresent($oid)) {
-                $req_ext->{$oid} = $decoded->extensionValue($oid);
-            }
-         }
-         $param->{req_extensions} = $req_ext;
-         $source_ref->{req_extensions} = 'PKCS10';
+    my $req_ext = $self->hande_extensions( $ext, sub {
+        my $oid = shift;
+        return $decoded->extensionValue($oid) if ($decoded->extensionPresent($oid));
+    });
+
+    if ($req_ext) {
+        $param->{req_extensions} = $req_ext;
+        $source_ref->{req_extensions} = 'PKCS10';
     }
 
     # If the profile has NO ui section, we write the parsed hash and the SANs "as is" to the context
@@ -326,6 +319,47 @@ sub execute {
     return 1;
 }
 
+# wrapper method to handle extraction of attributes and extensions
+sub hande_extensions {
+
+    my $self = shift;
+    my $oidlist = shift;
+    my $callback = shift;
+
+    return unless ($oidlist);
+
+    my @oids;
+    # legacy format, a single string, multiple items separated by space/comma
+    if (ref $oidlist eq '') {
+        @oids = split /[\s,]+/, $oidlist;
+
+    # list of items
+    } elsif (ref $oidlist eq 'ARRAY') {
+        @oids = $oidlist->@*;
+
+    } else {
+
+        configuration_error('unsupported format of oidlist')
+    }
+
+    my $parsed;
+    foreach my $oid (@oids) {
+
+        # use the callback to fetch the raw value
+        # this is a raw asn1 tag for unnamed oids
+        # but a known structure for named items
+        my $val = $callback->($oid);
+        next unless (defined $val);
+
+        ##! 16: $oid
+        ##! 32: $val
+        $parsed->{$oid} = $val;
+
+    }
+    return $parsed;
+
+}
+
 1;
 __END__
 
@@ -398,6 +432,18 @@ signature. When set to a true value, the class will extract the payload
 from the given container and write it back to I<target_key>. If not set,
 the container is written to I<pkcs10>.
 
+=item req_attributes
+
+A list of named attributes or OIDs to extract from the CSR, result goes
+into the context value of the same name.
+For details see the section L<Extension Handling> below.
+
+=item req_extensions
+
+A list of named extensions or OIDs to extract from the CSR, result goes
+into the context value of the same name.
+For details see the section L<Extension Handling> below.
+
 =back
 
 =head2 Expected context values
@@ -415,18 +461,6 @@ Read cert_profile request from if not set using activity param.
 =item cert_subject_style
 
 Read cert_subject_style request from if not set using activity param.
-
-=item req_extensions
-
-List of OIDs (or names) of request extensions, multiple items must be
-seperated by space. For each extensions that is found in the request,
-a item in the req_extension context item is created. The key is the given
-name, the content is the raw data as returned by Crypt::PKCS10 and depends
-on the extensions.
-
-=item req_attributes
-
-List of OIDs (or names) of request attributes, similar to req_extension.
 
 =back
 
@@ -453,7 +487,6 @@ values found. Note that any component is an array even if it has only one
 item. All items found in the SAN part are also added with a prefix "SAN_"
 and all uppercased names as used by openssl (SAN_OTHERNAME, SAN_EMAIL,
 SAN_DNS, SAN_DIRNAME, SAN_URI, SAN_IP, SAN_RID)
-
 
 =item cert_san_parts
 
@@ -482,6 +515,16 @@ The digest algorithm used to create the signature request (e.g. md5, sha1).
 Hash holding additional information on the used public key, only present
 if key_params is set. Keys depend on the type of the key.
 
+=item req_attributes
+
+Recevies the items extracted from the CSR as defined by the I<req_attributes>
+activity parameter. The result is a hash where the key is the name of the
+attribute and the value is the result of the extraction. See L<Extension Handling>
+
+=item req_extensions
+
+Same as I<req_attributes> for the I<req_extensions> paramter.
+
 =over
 
 =item key_length
@@ -505,5 +548,39 @@ get_key_identifier_from_data and the format used in the certificates table.
 
 Boolean, set only if I<validate_signature> is set and recevies a literal
 0/1 weather the PKCS#10 containers signature can be validated.
+
+=back
+
+=head1 Extension Handling
+
+The parameters I<req_attributes> and I<req_extensions> can be used to
+define extra attributes to be extracted from the CSR.
+
+Provide the OIDs/names to extract as a list, either directly as ArrayRef
+or as comma/space seperated string. Named extensions are parsed as
+defined below, unnamed extensions are returned as defined as "raw ASN1"
+buffer.
+
+Handling of named extensions depends on the Crypt::PKCS10 module so this
+documentation might become outdated if the module changes!
+
+=over
+
+=item certificateTemplate (1.3.6.1.4.1.311.21.7)
+
+Returns a hash with the keys I<templateID> (OID) and
+I<templateMajorVersion>/I<templateMinorVersion> (INT) as defined by
+Microsoft.
+
+=item certificateTemplateName (1.3.6.1.4.1.311.20.2)
+
+Returns the literal value given to this extension in the CSR.
+In most cases this should be of type I<DirectoryString> so the value is
+a literal string but the definition also allows this to be an undefined
+ASN1 structure.
+
+=item challengePassword (1.2.840.113549.1.9.7)
+
+Returns the literal value of the challenge password attribute.
 
 =back
