@@ -8,6 +8,7 @@ with qw(
 );
 
 # Core modules
+use Encode;
 use Math::BigInt;
 
 # CPAN modules
@@ -400,7 +401,7 @@ sub init_export ($self, $args) {
     $self->attachment(
         mimetype => 'text/tab-separated-values',
         filename => sprintf('certificate export %s.txt', DateTime->now->iso8601),
-        bytes => $buffer,
+        bytes => Encode::encode('UTF-8', $buffer),
         expires => '1m',
     );
 }
