@@ -35,13 +35,8 @@ sub talk {
         my $rc = $transport{$ident}->write(
             $serialization{$ident}->serialize($arg)
         );
+        $self->__check_sigterm();
         $self->set_communication_state('can_receive');
-        if ($OpenXPKI::Server::stop_soon) {
-            ##! 1: 'stop_soon hit'
-            CTX('log')->system()->info("Child $$ terminated by SIGTERM");
-            CTX('config')->cleanup();
-            exit 0;
-        }
         return $rc;
     }
     else {
@@ -55,18 +50,12 @@ sub talk {
 }
 
 
-
 # get server response
 sub collect {
     my $self  = shift;
     my $ident = ident $self;
 
-    if ($OpenXPKI::Server::stop_soon) {
-        ##! 1: 'stop_soon hit'
-        CTX('log')->system()->info("Child $$ terminated by SIGTERM");
-        CTX('config')->cleanup();
-        exit 0;
-    }
+    $self->__check_sigterm();
 
     my $communication_state = $self->get_communication_state();
     ##! 2: "communication state: $communication_state"
@@ -96,19 +85,28 @@ sub collect {
         ##! 1: "ERROR: " . Dumper($error)
         $self->set_communication_state('can_send');
         if ($error eq "alarm\n") {
-            OpenXPKI::Exception->throw(
-                message => "I18N_OPENXPKI_SERVICE_COLLECT_TIMEOUT",
-                log => undef, # do not log this exception
-            );
+            return;
         }
-        # FIXME
-        die $error;
+        OpenXPKI::Exception::Socket->throw(
+            message => "socket timeout on collect",
+            params => { error => $error }
+        );
     }
     $self->set_communication_state('can_send');
     ##! 128: 'collect: ' . Dumper $result
     return $result;
 }
 
+# check if this process has recevied a stop signal
+sub __check_sigterm {
+
+    return unless ($OpenXPKI::Server::stop_soon);
+    ##! 1: 'stop_soon hit'
+    CTX('log')->system()->info("Child $$ terminated by SIGTERM");
+    CTX('config')->cleanup();
+    exit 0;
+
+}
 
 sub __get_error {
     my $self  = shift;

@@ -43,37 +43,6 @@ sub init {
     # no session left in context
     OpenXPKI::Server::Context::killsession();
 
-    # TODO - this should be handled by the run method after some cleanup
-    # do session init, PKI realm selection and authentication
-    while ($state_of{$ident} ne 'MAIN_LOOP') {
-        my $msg = $self->collect();
-        my $is_valid = $self->__is_valid_message({
-            MESSAGE => $msg,
-        });
-        if (! $is_valid) {
-            $self->__send_error({
-                ERROR => "I18N_OPENXPKI_SERVICE_DEFAULT_RUN_UNRECOGNIZED_SERVICE_MESSAGE",
-            });
-        }
-        else { # valid message received
-            my $result;
-            eval { # try to handle it
-                $result = $self->__handle_message({ MESSAGE => $msg });
-                # persist session unless it was killed (we assume someone saved it before)
-                CTX('session')->persist if OpenXPKI::Server::Context::hascontext('session');
-            };
-            if (my $exc = OpenXPKI::Exception->caught()) {
-                $self->__send_error({ EXCEPTION => $exc });
-            }
-            elsif ($EVAL_ERROR) {
-                $self->__send_error({ EXCEPTION => $EVAL_ERROR });
-            }
-            else { # if everything was fine, send the result to the client
-                $self->talk($result);
-            }
-        }
-    }
-
     return 1;
 }
 
@@ -82,7 +51,7 @@ sub __is_valid_message : PRIVATE {
     my $ident   = ident $self;
     my $arg_ref = shift;
     my $message = $arg_ref->{'MESSAGE'};
-    my $message_name = $message->{'SERVICE_MSG'};
+    my $message_name = $message->{'SERVICE_MSG'} // '';
 
     ##! 32: 'message_name: ' . $message_name
     ##! 32: 'state: ' . $state_of{$ident}
@@ -887,62 +856,62 @@ sub run
   MESSAGE:
     while (1) {
         my $msg;
-        eval {
+
+        try {
             $msg = $self->collect();
-        };
-        if (my $exc = OpenXPKI::Exception->caught()) {
-            if ($exc->message() =~ m{I18N_OPENXPKI_TRANSPORT.*CLOSED_CONNECTION}xms) {
-                # client closed socket
-                last MESSAGE;
-            } else {
+        } catch($err) {
+            if (my $exc = OpenXPKI::Exception->caught()) {
                 $exc->rethrow();
             }
-        } elsif ($EVAL_ERROR) {
-            OpenXPKI::Exception->throw (
-            message => "I18N_OPENXPKI_SERVICE_DEFAULT_RUN_READ_EXCEPTION",
-            params  => {
-                EVAL_ERROR => $EVAL_ERROR,
-            });
+            OpenXPKI::Exception::Socket->throw (
+                message => "unable to collect message",
+                params  => { error => $err }
+            );
         }
 
+        # todo - clarify when this happens?
         last MESSAGE unless defined $msg;
 
-        my $is_valid = $self->__is_valid_message({ MESSAGE => $msg });
-        if (! $is_valid) {
+        # Disconnect on #EOT# Marker
+        if ($msg eq '#EOT#') {
+            $self->talk();
+            $self->__change_state({ STATE => 'NEW' });
+            return 1;
+        }
+
+        # the message is not expected in the current session flow
+        if (!$self->__is_valid_message({ MESSAGE => $msg })) {
             CTX('log')->system->debug("Invalid message received from client: ".($msg->{SERVICE_MSG} // "(empty)"));
             $self->__send_error({
                 ERROR => "I18N_OPENXPKI_SERVICE_DEFAULT_RUN_UNRECOGNIZED_SERVICE_MESSAGE",
             });
+            next MESSAGE;
         }
-        else { # valid message received
-            my $result;
-            # we dont need a valid session when we are not in main loop state
-            if ($state_of{$ident} eq 'MAIN_LOOP' && ! CTX('session')->is_valid) {
-                # check whether we still have a valid session (someone
-                # might have logged out on a different forked server)
-                CTX('log')->system->debug("Can't process client message: session is not valid (login incomplete)");
-                $self->__send_error({
-                    ERROR => 'I18N_OPENXPKI_SERVICE_DEFAULT_RUN_SESSION_INVALID',
-                });
-            }
-            else {
-                # our session is just fine
-                eval { # try to handle it
-                    $result = $self->__handle_message({ MESSAGE => $msg });
-                    # persist session unless it was killed (we assume someone saved it before)
-                    CTX('session')->persist if OpenXPKI::Server::Context::hascontext('session');
-                };
-                if (my $exc = OpenXPKI::Exception->caught()) {
-                    $self->__send_error({ EXCEPTION => $exc, });
-                }
-                elsif ($EVAL_ERROR) {
-                    $self->__send_error({ EXCEPTION => $EVAL_ERROR, });
-                }
-                else { # if everything was fine, send the result to the client
-                    $self->talk($result);
-                }
-            }
+
+        # if we are in the MAIN_LOOP we expect a valid session
+        if ($state_of{$ident} eq 'MAIN_LOOP' && ! CTX('session')->is_valid) {
+            CTX('log')->system->debug("Can't process client message: session is not valid (login incomplete)");
+            $self->__send_error({
+                ERROR => 'I18N_OPENXPKI_SERVICE_DEFAULT_RUN_SESSION_INVALID',
+            });
+            next MESSAGE;
         }
+
+        # we are either in a valid session or in the session init phase
+        try {
+            my $result = $self->__handle_message({ MESSAGE => $msg });
+            # persist session unless it was killed (we assume someone saved it before)
+            CTX('session')->persist if OpenXPKI::Server::Context::hascontext('session');
+            $self->talk($result);
+        } catch($err) {
+            if (my $exc = OpenXPKI::Exception->caught()) {
+                $self->__send_error({ EXCEPTION => $exc, });
+            } else {
+                $self->__send_error({ ERROR => $err });
+            }
+            next MESSAGE;
+        }
+
     }
     return 1;
 }

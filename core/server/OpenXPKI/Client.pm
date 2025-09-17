@@ -391,6 +391,9 @@ sub close_connection ($self) {
         warn "got close_connection on already closed socket";
         return;
     }
+
+    $self->talk('#EOT#');
+
     shutdown($self->_socket, 2); # we have stopped using this socket
     # for whatever reasons shutdown does not free the handle, see #645
     close($self->_socket);

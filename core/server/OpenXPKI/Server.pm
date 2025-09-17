@@ -368,14 +368,6 @@ sub process_request {
     eval { $rc = do_process_request(@_) };
 
     if (my $exc = OpenXPKI::Exception->caught()) {
-        if ($exc->message() =~ m{ (?:
-            I18N_OPENXPKI_TRANSPORT.*CLOSED_CONNECTION
-            | I18N_OPENXPKI_SERVICE_COLLECT_TIMEOUT
-        ) }xms) {
-            # exit quietly
-            return 1;
-        }
-
         # other OpenXPKI exceptions
         $msg = $exc->full_message();
     } elsif ($EVAL_ERROR) {

@@ -102,6 +102,12 @@ sub run {
 
         last MESSAGE unless defined $msg;
 
+        # Disconnect on #EOT# Marker
+        if ($msg eq '#EOT#') {
+            $self->talk();
+            return 1;
+        }
+
         # messages are JSON Web Tokens so we need to unwrap them
         ##! 16: $msg
 
@@ -323,9 +329,8 @@ sub collect {
         alarm 0;
         ##! 1: "ERROR: " . Dumper($error)
         if ($error eq "alarm\n") {
-            OpenXPKI::Exception->throw(
-                message => "I18N_OPENXPKI_SERVICE_COLLECT_TIMEOUT",
-                log => undef, # do not log this exception
+            OpenXPKI::Exception::Timeout->throw(
+                message => "socket timeout on collect",
             );
         }
         # FIXME
