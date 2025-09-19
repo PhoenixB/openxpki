@@ -9,12 +9,6 @@ sub get_command
 
     ## compensate missing parameters
 
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    $engine = $self->{ENGINE}->get_engine()
-        if ($self->{ENGINE}->get_engine() and
-            ($engine_usage =~ m{ ALWAYS }xms));
-
     $self->{ENC_ALG}  = "aes256" if (not exists $self->{ENC_ALG});
 
     $self->{OUTFORM}  = "PEM" if (not exists $self->{OUTFORM});
@@ -63,7 +57,6 @@ sub get_command
 
     ## build the command
     my @command = qw( cms -encrypt -nosmimecap -binary );
-    push @command, ('-engine', $engine) if ($engine);
     push @command, ('-in', $self->write_temp_file( $self->{CONTENT} ));
     push @command, ('-out', $self->get_outfile());
     push @command, ('-outform', $self->{OUTFORM}) if ($self->{OUTFORM});
@@ -138,8 +131,6 @@ OpenXPKI::Crypto::Backend::OpenSSL::Command::pkcs7_encrypt
 =over
 
 =item * CONTENT
-
-=item * ENGINE_USAGE
 
 =item * CERT (optional)
 

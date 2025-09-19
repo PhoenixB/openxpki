@@ -8,13 +8,6 @@ sub get_command
     my $self = shift;
 
     ## compensate missing parameters
-
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    $engine = $self->{ENGINE}->get_engine()
-        if ($self->{ENGINE}->get_engine() and
-            ($engine_usage =~ m{ ALWAYS }xms));
-
     if (not $self->{PKCS7})
     {
         OpenXPKI::Exception->throw (
@@ -38,7 +31,6 @@ sub get_command
     ## build the command
 
     my @command = qw( cms -verify -binary -inform PEM );
-    push @command, ("-engine", $engine) if ($engine);
     push @command, ("-in", $self->write_temp_file( $self->{PKCS7} ));
     push @command, ("-signer", $self->get_outfile());
 
@@ -94,8 +86,6 @@ OpenXPKI::Crypto::Backend::OpenSSL::Command::pkcs7_verify
 =item * CONTENT (original data which was signed, optional)
 
 =item * PKCS7 (signature which should be verified)
-
-=item * ENGINE_USAGE
 
 =item * CHAIN
 

@@ -45,15 +45,6 @@ sub get_command {
 
         my $command  = "x509";
 
-        ## option '-engine' is needed here for correct cert convertion
-        ## in a case when engine introduces new crypto algorithms (like GOST ones),
-        ## which are not available in a classical OpenSSL library
-        my $engine_usage = $self->{ENGINE}->get_engine_usage();
-
-        if ($self->{ENGINE}->get_engine() and ($engine_usage =~ m{ NEW_ALG }xms)) {
-            $command .= " -engine ". $self->{ENGINE}->get_engine();
-        }
-
         $command .= " -out ".$self->get_outfile();
         $command .= " -in ". $self->write_temp_file( $self->{DATA} );
         $command .= " -inform " . $inform;

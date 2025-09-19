@@ -15,16 +15,6 @@ sub get_command
     $self->{IN} = 'PEM' if (not $self->{IN});
     $self->{OUT} = 'PEM' if (not $self->{OUT});
 
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ NEW_ALG }xms) or
-         ($engine_usage =~ m{ ALWAYS }xms) or
-         ($engine_usage =~ m{ PRIV_KEY_OPS }xms))
-       ) {
-        $engine = $self->{ENGINE}->get_engine();
-    }
-
     ## check parameters
 
     if ($self->{KEYTYPE} !~ /\A(pkey|rsa)\z/) {
@@ -100,8 +90,6 @@ sub get_command
                 message => "I18N_OPENXPKI_CRYPTO_OPENSSL_COMMAND_CONVERT_PKEY_MISSING_OUTPUT_PASSWORD");
         }
     }
-
-    $command .= " -engine $engine" if ($engine);
 
     $command .= " -out ".$self->get_outfile();
 

@@ -44,14 +44,6 @@ sub get_command
 
     my $command  = "req";
 
-    ## option '-engine' is needed here for correct req convertion
-    ## in a case when engine introduces new crypto algorithms (like GOST ones),
-    ## which are not available in a classical OpenSSL library
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    $command .= " -engine ".$self->{ENGINE}->get_engine()
-        if ($self->{ENGINE}->get_engine() and
-            ($engine_usage =~ m{ NEW_ALG }xms));
-
     $command .= " -out ".$self->get_outfile();
     $command .= " -in " . $self->write_temp_file( $self->{DATA} );
     $command .= " -inform " . $self->{IN};

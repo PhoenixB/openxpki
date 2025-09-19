@@ -20,18 +20,6 @@ sub get_command
     $self->{OUT} = 'PEM' if (not $self->{OUT});
     $self->{REVERSE} = 0 if (not $self->{REVERSE});
 
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ NEW_ALG }xms) or
-         ($engine_usage =~ m{ ALWAYS }xms) or
-         ($engine_usage =~ m{ PRIV_KEY_OPS }xms))
-       ) {
-        $engine = $self->{ENGINE}->get_engine();
-    }
-
-
-
     ## check parameters
 
     if ($self->{ENC_ALG} !~ /\A(aes(128|192|256)|des3|idea)\z/) {
@@ -80,8 +68,6 @@ sub get_command
     if ($self->{OUT} eq "DER") {
         $command .= "-outform der ";
     }
-
-    $command .= " -engine $engine" if ($engine);
 
     $command .= " -out ".$self->get_outfile();
 
