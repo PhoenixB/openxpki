@@ -14,15 +14,7 @@ sub get_command
     $self->{IN} = 'PEM' if (not $self->{IN});
     $self->{OUT} = 'PEM' if (not $self->{OUT});
 
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ NEW_ALG }xms) or
-         ($engine_usage =~ m{ ALWAYS }xms) or
-         ($engine_usage =~ m{ PRIV_KEY_OPS }xms))
-       ) {
-        $engine = $self->{ENGINE}->get_engine();
-    }
+    my $engine = $self->__get_used_engine('PRIV_KEY_OPS');
 
     ## check parameters
     if ($self->{KEYTYPE} !~ /\A(pkey|rsa)\z/) {

@@ -48,19 +48,6 @@ sub get_command
     return [ \@command ];
 }
 
-sub __get_used_engine
-{
-    my $self = shift;
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        ($engine_usage =~ m{ ALWAYS }xms)) {
-        return $self->{ENGINE}->get_engine();
-    }
-    else {
-        return "";
-    }
-}
-
 sub hide_output
 {
     return 0;

@@ -7,13 +7,8 @@ sub get_command
 {
     my $self = shift;
 
-    ## compensate missing parameters
-    my $engine = "";
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    $engine = $self->{ENGINE}->get_engine()
-        if ($self->{ENGINE}->get_engine() and
-            (($engine_usage =~ m{ ALWAYS }xms) or
-             ($engine_usage =~ m{ PRIV_KEY_OPS }xms)));
+
+    my $engine = $self->__get_used_engine('PRIV_KEY_OPS');
 
     $self->{PKCS12_PASSWD} = $self->{PASSWD}
         if (not exists $self->{PKCS12_PASSWD});

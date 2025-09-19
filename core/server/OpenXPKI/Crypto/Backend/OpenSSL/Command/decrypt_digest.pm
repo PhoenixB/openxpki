@@ -34,8 +34,7 @@ sub get_command {
 
         # prepare parameters
         $passwd = $self->{PASSWD};
-        my $engine_usage = $self->{ENGINE}->get_engine_usage();
-        $engine = $self->__get_used_engine();
+        $engine = $self->__get_used_engine('PRIV_KEY_OPS');
 
         $self->{KEYFILE} = $self->write_temp_file( $self->{KEY} );
 
@@ -74,22 +73,6 @@ sub get_command {
     }
 
     return [ \@command ];
-}
-
-sub __get_used_engine {
-    my $self         = shift;
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if (
-        $self->{ENGINE}->get_engine()
-        and (  ( $engine_usage =~ m{ ALWAYS }xms )
-            or ( $engine_usage =~ m{ PRIV_KEY_OPS }xms ) )
-      )
-    {
-        return $self->{ENGINE}->get_engine();
-    }
-    else {
-        return "";
-    }
 }
 
 sub hide_output {

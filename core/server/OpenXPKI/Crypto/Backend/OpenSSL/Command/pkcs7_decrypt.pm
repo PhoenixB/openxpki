@@ -55,7 +55,8 @@ sub get_command
     } else {
             ##! 16: 'external signature '
             ## CA external signature
-            $engine  = $self->__get_used_engine();
+            $engine = $self->__get_used_engine('PRIV_KEY_OPS');
+
             ##! 16: 'engine: ' . $engine
             $passwd  = $self->{ENGINE}->get_passwd();
             ##! 16: 'password: ' . $passwd
@@ -98,20 +99,6 @@ sub get_command
     }
 
     return [ \@command ];
-}
-
-sub __get_used_engine
-{
-    my $self = shift;
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ ALWAYS }xms) or
-         ($engine_usage =~ m{ PRIV_KEY_OPS }xms))) {
-        return $self->{ENGINE}->get_engine();
-    }
-    else {
-        return '';
-    }
 }
 
 sub hide_output

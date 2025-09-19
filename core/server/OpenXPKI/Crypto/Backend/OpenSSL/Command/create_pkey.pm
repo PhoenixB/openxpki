@@ -18,7 +18,7 @@ sub get_command
 
     # prepare parameters
     my $passwd = $self->{PASSWD};
-    my $engine = $self->__get_used_engine();
+    my $engine = $self->__get_used_engine('RANDOM','PRIV_KEY_GEN');
 
     my $key_alg = $self->{KEY_ALG};
     my $enc_alg = $self->{ENC_ALG} || 'aes256';
@@ -69,19 +69,6 @@ sub get_command
     return [ \@command ];
 }
 
-sub __get_used_engine
-{
-    my $self = shift;
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-
-    if ($self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ (ALWAYS|RANDOM|PRIV_KEY_GEN) }xms))) {
-        return $self->{ENGINE}->get_engine();
-    }
-    else {
-        return "";
-    }
-}
 
 sub hide_output
 {

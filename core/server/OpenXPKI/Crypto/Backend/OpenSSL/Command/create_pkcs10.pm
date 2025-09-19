@@ -27,7 +27,7 @@ sub get_command
 
     # prepare parameters
     $passwd = $self->{PASSWD};
-    $engine = $self->__get_used_engine();
+    $engine = $self->__get_used_engine('PRIV_KEY_OPS');
 
     # if profile is set we have an extension section
     if ($self->{PROFILE}) {
@@ -63,19 +63,6 @@ sub get_command
         $self->set_env ("pwd" => $passwd);
     }
     return [ \@command ];
-}
-
-sub __get_used_engine
-{
-    my $self = shift;
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    if ($self->{ENGINE}->get_engine() and
-        ($engine_usage =~ m{ (ALWAYS|PRIV_KEY_OPS) }xms)) {
-        return $self->{ENGINE}->get_engine();
-    }
-    else {
-        return "";
-    }
 }
 
 sub hide_output

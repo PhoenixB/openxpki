@@ -22,18 +22,16 @@ sub get_command
             message => "I18N_OPENXPKI_CRYPTO_OPENSSL_COMMAND_CREATE_RANDOM_MISSING_LENGTH");
     }
 
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
     my @command = ('rand');
     if (not $self->{BINARY}) {
         push @command, '-base64';
     }
 
-    if ((not $self->{NOENGINE}) and
-        $self->{ENGINE}->get_engine() and
-        (($engine_usage =~ m{ ALWAYS }xms) or
-         ($engine_usage =~ m{ RANDOM }xms))) {
-        push @command, "-engine", $self->{ENGINE}->get_engine();
+    if (not $self->{NOENGINE}) {
+        my $engine = $self->__get_used_engine('RANDOM');
+        push @command, "-engine", $engine if ($engine);
     }
+
     push @command, "-out", $self->get_outfile();
     push @command, $length;
 

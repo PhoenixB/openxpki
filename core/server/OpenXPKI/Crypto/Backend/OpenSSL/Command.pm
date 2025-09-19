@@ -22,6 +22,7 @@ use OpenXPKI::Crypto::Backend::OpenSSL::Command::create_params;
 package OpenXPKI::Crypto::Backend::OpenSSL::Command;
 use OpenXPKI;
 
+use List::Util qw(any);
 use OpenXPKI::DN;
 use OpenXPKI::FileUtils;
 
@@ -167,6 +168,38 @@ sub get_result
 
     return $ret;
 }
+
+sub __get_used_engine
+{
+    my $self = shift;
+    my @flags = @_;
+
+    # if no engine exists we do not need to check for its usage
+    return unless ($self->{ENGINE}->get_engine());
+
+    ##! 32: \@flags
+
+    # pattern (string) holding the flags
+    my $engine_usage = $self->{ENGINE}->get_engine_usage();
+
+    ##! 8: 'engine_usage: ' . $engine_usage
+
+    # configuration tells us to not use the engine at all
+    return "" unless($engine_usage);
+    # not really used but mentioned in the docs
+    return "" if ($engine_usage eq 'NEVER');
+
+    # configuration tells us to always use the engine
+    return $self->{ENGINE}->get_engine() if ($engine_usage =~ m{ALWAYS});
+
+    # check if we the special use case is configured
+    if (any { $engine_usage =~ qr/$_/ } @flags) {
+        return $self->{ENGINE}->get_engine();
+    }
+
+    return "";
+}
+
 
 1;
 

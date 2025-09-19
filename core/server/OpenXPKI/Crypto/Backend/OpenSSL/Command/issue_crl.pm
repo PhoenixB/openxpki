@@ -20,12 +20,9 @@ sub get_command
     ## ENGINE key's cert: no parameters
     ## normal cert: engine (optional), passwd, key
 
-    my ($engine, $keyform, $passwd, $key) = ("", "", undef);
-    my $engine_usage = $self->{ENGINE}->get_engine_usage();
-    $engine  = $self->{ENGINE}->get_engine()
-        if ($self->{ENGINE}->get_engine() and
-            (($engine_usage =~ m{ ALWAYS }xms) or
-             ($engine_usage =~ m{ PRIV_KEY_OPS }xms)));
+    my ($keyform, $passwd, $key) = ("", "", undef);
+    my $engine = $self->__get_used_engine('PRIV_KEY_OPS');
+
     $keyform = $self->{ENGINE}->get_keyform();
     $passwd  = $self->{ENGINE}->get_passwd();
     $self->{KEYFILE}  = $self->{ENGINE}->get_keyfile();
