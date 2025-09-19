@@ -121,10 +121,14 @@ command "get_ui_system_status" => {
                 $result->{dv_expiry} = $db_datavault->{notafter};
             }
 
-        } elsif (my $alias = $self->api->get_token_alias_by_group( group => $groups->{datasafe} )) {
-            $result->{dv_alias} = $alias;
-            my $token_info = $self->api->get_token_info( alias => $alias );
-            $result->{dv_expiry} = -1 if ($token_info && $token_info->{vault_id});
+        } else {
+            # API call throws if no matching token is found
+            try {
+                my $alias = $self->api->get_token_alias_by_group( group => $groups->{datasafe} );
+                $result->{dv_alias} = $alias;
+                my $token_info = $self->api->get_token_info( alias => $alias );
+                $result->{dv_expiry} = -1 if ($token_info && $token_info->{vault_id});
+            } catch ($error) {}
         }
     };
 
