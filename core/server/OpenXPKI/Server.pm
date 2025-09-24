@@ -783,16 +783,14 @@ sub __log_and_die {
         ##! 16: 'error is something else'
         $log_message = "Error during $when: $error";
     }
-    ##! 16: 'log_message: ' . $log_message
 
-    CTX('log')->system->fatal($log_message);
+    ##! 16: 'log_message: ' . $log_message
+    CTX('log')->system->fatal($log_message) if OpenXPKI::Server::Context::hascontext('log');
 
     # die gracefully
     $ERRNO = 1;
     ##! 1: 'end, dying'
     die $log_message;
-
-    return 1;
 }
 
 1;
