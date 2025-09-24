@@ -117,17 +117,17 @@ sub _get_secret_def {
     return ref $def ? $def : undef;
 }
 
-=head2 _set_secret ($realm, $group, $secret_def)
+=head2 _set_secret ($realm, $group, $def)
 
-Set the named secret to the given C<$secret_def> I<HashRef>.
+Set the named secret to the given C<$def> I<HashRef>.
 
 =cut
 
 sub _set_secret {
-    my ($self, $realm, $group, $secret_def) = @_;
+    my ($self, $realm, $group, $def) = @_;
 
     $self->secrets->{$realm} //= {};
-    $self->secrets->{$realm}->{$group} = $secret_def;
+    $self->secrets->{$realm}->{$group} = $def;
 }
 
 =head2 _load ($alias)
@@ -173,7 +173,7 @@ sub _load {
     return $def;
 }
 
-=head2 _create_object ($secret_def)
+=head2 _create_object ($def)
 
 Returns an object with Moose role L<OpenXPKI::Crypto::SecretRole> according to
 the given config data I<HashRef>.
@@ -181,24 +181,24 @@ the given config data I<HashRef>.
 =cut
 
 sub _create_object {
-    my ($self, $secret_def) = @_;
+    my ($self, $def) = @_;
     ##! 1: "start"
 
-    my $realm = $secret_def->{_realm};
-    my $method = lc($secret_def->{method} || "");
-    my $share_type = lc($secret_def->{share_type} || "plain");
-    my $share_store = lc($secret_def->{share_store} || "");
-    my $group = $secret_def->{_alias};
+    my $realm = $def->{_realm};
+    my $method = lc($def->{method} || "");
+    my $share_type = lc($def->{share_type} || "plain");
+    my $share_store = lc($def->{share_store} || "");
+    my $group = $def->{_alias};
 
     ##! 2: "method: $method"
     if ('literal' eq $method) {
         require OpenXPKI::Crypto::Secret::Plain;
         my $secret = OpenXPKI::Crypto::Secret::Plain->new(
             part_count => 1,
-            ($secret_def->{kcv} ? (kcv => $secret_def->{kcv}) : ()),
+            ($def->{kcv} ? (kcv => $def->{kcv}) : ()),
         );
-        if (defined $secret_def->{value}) {
-            $secret->set_secret($secret_def->{value});
+        if (defined $def->{value}) {
+            $secret->set_secret($def->{value});
         } else {
             CTX('log')->application->warn("Creating literal secret but secret value is not specified");
         }
@@ -208,25 +208,25 @@ sub _create_object {
         require OpenXPKI::Crypto::Secret::Plain;
         return OpenXPKI::Crypto::Secret::Plain->new(
             # KCV and Multi-Part is not yet working
-            part_count => ($secret_def->{total_shares} || 1),
-            ($secret_def->{kcv} ? (kcv => $secret_def->{kcv}) : ()),
+            part_count => ($def->{total_shares} || 1),
+            ($def->{kcv} ? (kcv => $def->{kcv}) : ()),
         );
     }
     elsif ('kdf' eq $method) {
         require OpenXPKI::Crypto::Secret::KDF;
-        ##! 32: $secret_def->{kdf_param}
+        ##! 32: $def->{kdf_param}
         my $secret = OpenXPKI::Crypto::Secret::KDF->new(
-            ($secret_def->{kcv} ? (kcv => $secret_def->{kcv}) : ()),
-            kdf => $secret_def->{kdf},
-            salt => $secret_def->{salt},
-            kdf_param => ($secret_def->{kdf_param} || {}),
+            ($def->{kcv} ? (kcv => $def->{kcv}) : ()),
+            kdf => $def->{kdf},
+            salt => $def->{salt},
+            kdf_param => ($def->{kdf_param} || {}),
         );
         return $secret;
     }
     elsif ('split' eq $method) {
         my %split_secret_args = (
-            quorum_k => $secret_def->{required_shares},
-            quorum_n => $secret_def->{total_shares},
+            quorum_k => $def->{required_shares},
+            quorum_n => $def->{total_shares},
             token  => $self->default_token,
         );
 
@@ -237,11 +237,11 @@ sub _create_object {
         elsif ('encrypted' eq $share_type) {
             OpenXPKI::Exception->throw (
                 message => "I18N_OPENXPKI_CRYPTO_SECRETMANAGER_INIT_SECRET_SHARE_STORE_MISSING"
-            ) unless $secret_def->{share_store};
+            ) unless $def->{share_store};
 
             OpenXPKI::Exception->throw (
                 message => "I18N_OPENXPKI_CRYPTO_SECRETMANAGER_INIT_SECRET_SHARE_NAME_MISSING"
-            ) unless $secret_def->{share_name};
+            ) unless $def->{share_name};
 
             # set up filesystem or datapool backend (loader)
             my $loader;
@@ -283,9 +283,9 @@ sub _create_object {
             return OpenXPKI::Crypto::Secret::SplitEncrypted->new(
                 %split_secret_args,
                 share_names => $self->_get_encryptedshare_names(
-                    $secret_def->{share_name},
+                    $def->{share_name},
                     $group,
-                    $secret_def->{total_shares}
+                    $def->{total_shares}
                 ),
                 encrypted_share_loader => $loader,
             );
@@ -436,18 +436,18 @@ sub _save_to_cache {
     }
 }
 
-=head2 _clear_cache ($secret_def)
+=head2 _clear_cache ($def)
 
 Removes the secret's serialized data from the cache (session or DB).
 
 =cut
 
 sub _clear_cache {
-    my ($self, $secret_def) = @_;
+    my ($self, $def) = @_;
 
-    my $cache_type = lc($secret_def->{cache} || "");
-    my $realm = $secret_def->{_realm};
-    my $alias = $secret_def->{_alias};
+    my $cache_type = lc($def->{cache} || "");
+    my $realm = $def->{_realm};
+    my $alias = $def->{_alias};
 
     # FIXME Implement different storage options in role or class
     if ($cache_type eq "none") {
@@ -596,15 +596,15 @@ sub get_secret {
 
     return undef unless $self->is_complete($alias);
 
-    my $secret_def = $self->_get_secret_def($alias);
+    my $def = $self->_get_secret_def($alias);
 
-    if (not $secret_def->{export}) {
+    if (not $def->{export}) {
         OpenXPKI::Exception->throw (
             message => "I18N_OPENXPKI_CRYPTO_TOKENMANAGER_GET_SECRET_GROUP_NOT_EXPORTABLE"
         );
     }
 
-    return $secret_def->{_ref}->get_secret();
+    return $def->{_ref}->get_secret();
 }
 
 =head2 set_part ({ GROUP, VALUE, PART })
@@ -646,12 +646,12 @@ sub clear {
     ##! 1: "start"
 
     ##! 2: "init"
-    my $secret_def = $self->_get_secret_def($alias);
+    my $def = $self->_get_secret_def($alias);
 
-    $self->_clear_cache($secret_def);
+    $self->_clear_cache($def);
 
     # Clear secret data (makes it unset/incomplete again)
-    $secret_def->{_ref}->clear_secret;
+    $def->{_ref}->clear_secret;
 
     ##! 1: "finished"
 }
@@ -832,7 +832,7 @@ sub accept_transfer {
         my $cache_type = 'daemon';
         my $secret = OpenXPKI::Crypto::Secret::Plain->new(part_count => 1);
         $secret->thaw($self->_load_from_cache($realm, $transfer_id, $cache_type)); # might be undef
-        my $secret_def = {
+        my $def = {
             label => 'Cluster Transfer',
             type => 'Plain',
             cache => $cache_type,
@@ -840,7 +840,7 @@ sub accept_transfer {
             _ref => $secret,
             _alias => $transfer_id,
         };
-        $self->_set_secret($realm, $transfer_id, $secret_def);
+        $self->_set_secret($realm, $transfer_id, $def);
     }
     # load the private key from the secret vault
     my $privkey = $self->_get_secret_def($transfer_id)->{_ref}->get_secret()
