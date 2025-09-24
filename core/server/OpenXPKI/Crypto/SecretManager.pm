@@ -2,7 +2,8 @@ package OpenXPKI::Crypto::SecretManager;
 use OpenXPKI -class;
 
 # Core modules
-use Digest::SHA qw(sha256_hex sha1_base64);
+use Digest::SHA qw( sha256_hex sha1_base64 );
+use Time::HiRes;
 
 # CPAN modules
 use Crypt::Argon2;
@@ -60,8 +61,8 @@ has secrets => (
 Returns the configuration I<HashRef> of the secret specified by the given name
 or C<undef> if realm or secret do not exist.
 
-When called first this method tries to load the secret data from configuration
-and (the serialized data) from the cache.
+Upon first call this method tries to load the secret's setup from configuration
+and the serialized data from the cache.
 
 =cut
 
@@ -118,7 +119,8 @@ sub _get_secret_def ($self, $alias, $return_undef_if_not_found = 0) {
 
 =head2 _set_secret ($realm, $group, $def)
 
-Set the named secret to the given C<$def> I<HashRef>.
+Internally store the given C<$def> I<HashRef> under the given realm/group
+name.
 
 =cut
 
@@ -155,15 +157,26 @@ sub _load ($self, $confpath, $realm, $alias) {
     return unless $def;
     return $def if $def->{import}; # stop processing as we'll throw away this hash if a global secret is referenced
 
-    $def->{cache} = "none" if ($def->{method} // "") eq "literal"; # force "no cache" for literal secrets
+    # defaults
+    $def->{cache_recheck_interval} //= 60;
+    $def->{cache_recheck_incomplete_interval} //= 1;
+
+    # force "no cache" for literal secrets
+    $def->{cache} = "none" if ($def->{method} // "") eq "literal";
+
+    # internal meta data
     $def->{_alias} = $alias;
     $def->{_realm} = $realm;
 
     ##! 2: "initialize object"
     my $secret = $self->_create_object($def);
-    ##! 2: "load serialized data into object (if any)"
-    $secret->thaw($self->_load_from_cache($realm, $alias, $def->{cache})); # might be undef
     $def->{_ref} = $secret;
+
+    ##! 2: "load serialized data into object (if any)"
+    my $serialized = $self->_load_from_cache($def->{_realm}, $def->{_alias}, $def->{cache}); # might be undef
+    $secret->thaw($serialized);
+    $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
+    $def->{_cache_checksum} = sha256_hex($serialized // '');
 
     ##! 1: "finish"
     return $def;
@@ -468,6 +481,49 @@ sub _clear_cache ($self, $def) {
     }
 }
 
+
+=head2 _update_from_cache ($alias)
+
+Update the in-memory copy of the secret with the cache value, but only if:
+
+=over
+
+=item * the secret is incomplete and C<cache_recheck_incomplete_interval>
+seconds elapsed or
+
+=item * the secret is complete but C<cache_recheck_interval> elapsed
+
+=back
+
+since last check.
+
+=cut
+
+sub _update_from_cache ($self, $def) {
+    ##! 1: "start"
+    my $secret = $def->{_ref};
+
+    my $is_complete = $secret->is_complete;
+    my $elapsed_since_sync = Time::HiRes::time - $def->{_synced_with_cache}//0;
+
+    # only update if intervals elapsed
+    return if (
+        ($is_complete and $elapsed_since_sync < $def->{cache_recheck_interval})
+        or
+        (not $is_complete and $elapsed_since_sync < $def->{cache_recheck_incomplete_interval})
+    );
+
+    my $serialized = $self->_load_from_cache($def->{_realm}, $def->{_alias}, $def->{cache}); # might be undef
+    my $checksum = sha256_hex($serialized // '');
+    # only burn CPU cycles if cache did change
+    if ($checksum ne ($def->{_cache_checksum}//'')) {
+        $secret->clear_secret;
+        $secret->thaw($serialized);
+        $def->{_cache_checksum} = $checksum;
+    }
+    $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
+}
+
 =head2 get_infos
 
 List type and name of all secret groups in the current realm
@@ -491,7 +547,7 @@ Returns:
 =cut
 
 sub get_infos ($self) {
-    ##! 1: "start"
+    ##! 2: "init"
     my $realm = CTX('session')->data->pki_realm;
 
     my @name_list;
@@ -512,6 +568,10 @@ sub get_infos ($self) {
                 message => "I18N_OPENXPKI_CRYPTO_SECRETMANAGER_GET_SECRET_GROUPS_GROUP_NOT_FOUND",
                 params => { GROUP => $alias },
             );
+
+        # read from cache in case parallel process changed something
+        $self->_update_from_cache($def);
+
         $result->{$alias} = {
             label => $def->{label},
             type  => $def->{method},
@@ -535,6 +595,7 @@ Returns the number of required parts to complete this secret.
 
 sub get_required_part_count ($self, $alias) {
     my $def = $self->_get_secret_def($alias);
+
     return $def->{_ref}->required_part_count;
 }
 
@@ -546,12 +607,15 @@ Returns the number of parts that are already inserted / set.
 
 sub get_inserted_part_count ($self, $alias) {
     my $def = $self->_get_secret_def($alias);
+    $self->_update_from_cache($def);
+
     return $def->{_ref}->inserted_part_count;
 }
 
 =head2 is_complete ($alias)
 
-Check if the secret is complete (all passwords loaded).
+Read current secret status from cache and check if it is complete (all parts
+set / passwords entered).
 
 Returns C<0> or C<1>.
 
@@ -559,7 +623,10 @@ Returns C<0> or C<1>.
 
 sub is_complete ($self, $alias) {
     ##! 1: "start"
-    return $self->_get_secret_def($alias)->{_ref}->is_complete ? 1 : 0;
+    my $def = $self->_get_secret_def($alias);
+    $self->_update_from_cache($def);
+
+    return $def->{_ref}->is_complete ? 1 : 0;
 }
 
 =head2 get_secret ($alias)
@@ -574,18 +641,16 @@ Returns the secret value or C<undef> if the secret is not complete.
 
 sub get_secret ($self, $alias) {
     ##! 1: "start"
-
-    return undef unless $self->is_complete($alias);
-
     my $def = $self->_get_secret_def($alias);
+    $self->_update_from_cache($def);
 
-    if (not $def->{export}) {
-        OpenXPKI::Exception->throw (
-            message => "I18N_OPENXPKI_CRYPTO_TOKENMANAGER_GET_SECRET_GROUP_NOT_EXPORTABLE"
-        );
-    }
+    return undef unless $def->{_ref}->is_complete; # this reads the current value from cache
 
-    return $def->{_ref}->get_secret();
+    OpenXPKI::Exception->throw (
+        message => "I18N_OPENXPKI_CRYPTO_TOKENMANAGER_GET_SECRET_GROUP_NOT_EXPORTABLE"
+    ) unless $def->{export};
+
+    return $def->{_ref}->get_secret;
 }
 
 =head2 set_part ({ GROUP, VALUE, PART })
@@ -603,15 +668,19 @@ sub set_part ($self, $args) {
 
     ##! 2: "init"
     my $def = $self->_get_secret_def($alias);
+    $self->_update_from_cache($def); # UPDATE! (or we might operate on a stale copy)
+
     my $obj = $def->{_ref};
 
     # store in case we need to restore on failure
     my $old_secret = $obj->freeze;
 
+    # FIXME Add try-catch and restore $old_secret in case of failure
     ##! 2: "setting $alias" . (defined $part ? ", part $part" : "")
     $obj->set_secret($value, $part); # $part might be undef
 
-    $self->_save_to_cache($def->{_realm}, $alias, $def->{cache}, $obj->freeze);
+    $self->_save_to_cache($def->{_realm}, $def->{_alias}, $def->{cache}, $obj->freeze);
+    $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
     ##! 1: "finished"
 }
 
@@ -622,10 +691,11 @@ Purge the secret of the given name.
 =cut
 
 sub clear ($self, $alias) {
-    ##! 1: "start"
+    ##! 2: "init"
     my $def = $self->_get_secret_def($alias);
 
     $self->_clear_cache($def);
+    $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
 
     # Clear secret data (makes it unset/incomplete again)
     $def->{_ref}->clear_secret;

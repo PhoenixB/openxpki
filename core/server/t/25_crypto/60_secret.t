@@ -19,12 +19,14 @@ use DateTime;
 use lib "$Bin/../lib";
 use OpenXPKI::Test;
 
-plan tests => 25;
-my $temp_tokenmanager = tempdir( CLEANUP => 1 );
+plan tests => 14;
 
 #
 # Setup test context
 #
+my $temp_tokenmanager = tempdir( CLEANUP => 1 );
+my $temp_tokenmanager2 = tempdir( CLEANUP => 1 );
+
 my $oxitest = OpenXPKI::Test->new(
     with => "CryptoLayer",
     also_init => "volatile_vault",
@@ -43,6 +45,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "literal",
                 value => "root",
                 cache => "daemon",
+                cache_recheck_incomplete_interval => 5,
             },
             # Plain secret, 1 part
             monkey_island_lonesome => {
@@ -50,6 +53,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "plain",
                 total_shares => 1,
                 cache => "daemon",
+                cache_recheck_incomplete_interval => 5,
                 kcv => '$argon2id$v=19$m=32768,t=3,p=1$NnJ6dGVBY2FwdGxkVE50ZGZRQkE4QT09$Q3d2HAWq7UCMLdipbacwYQ',
             },
             # Plain secret, 3 parts
@@ -58,6 +62,8 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "plain",
                 total_shares => 3,
                 cache => "daemon",
+                cache_recheck_interval => 2,
+                cache_recheck_incomplete_interval => 2,
             },
             # Cache type "session"
             monkey_island_session => {
@@ -65,6 +71,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "literal",
                 value => "onceuponatime",
                 cache => "session",
+                cache_recheck_incomplete_interval => 5,
             },
             # Secret with missing cache type
             lechuck => {
@@ -88,9 +95,10 @@ CTX('session')->data->pki_realm('alpha');
 use_ok "OpenXPKI::Crypto::TokenManager";
 
 # instantiate
-my $tm;
+my ($tm, $tm2);
 lives_ok {
     $tm = OpenXPKI::Crypto::TokenManager->new({ TMPDIR => $temp_tokenmanager });
+    $tm2 = OpenXPKI::Crypto::TokenManager->new({ TMPDIR => $temp_tokenmanager2 });
 } "instantiate TokenManager";
 
 my $phrase = "elaine";
@@ -115,44 +123,92 @@ throws_ok {
 #
 # cache type "daemon" - single part secret
 #
-throws_ok {
-    $tm->set_secret_part({ GROUP => "monkey_island_lonesome", VALUE => "wrong" });
-} qr/I18N_OPENXPKI_UI_SECRET_UNLOCK_KCV_MISMATCH/, "single part secret: fail on wrong value (kcv check)";
+subtest 'single part secret' => sub {
+    plan tests => 4;
 
-lives_and {
-    is $tm->is_secret_complete("monkey_island_lonesome"), 0;
-} "single part secret: completion status = false";
+    throws_ok {
+        $tm->set_secret_part({ GROUP => "monkey_island_lonesome", VALUE => "wrong" });
+    } qr/I18N_OPENXPKI_UI_SECRET_UNLOCK_KCV_MISMATCH/, "fail on wrong value (kcv check)";
 
-lives_and {
-    $tm->set_secret_part({ GROUP => "monkey_island_lonesome", VALUE => $phrase });
-    is $tm->get_secret_inserted_part_count("monkey_island_lonesome"), 1;
-} "single part secret: set part 1, completion status 1/1";
+    lives_and {
+        is $tm->is_secret_complete("monkey_island_lonesome"), 0;
+    } "completion status = false";
 
-lives_and {
-    is $tm->get_secret("monkey_island_lonesome"), $phrase;
-} "single part secret: retrieve";
+    lives_and {
+        $tm->set_secret_part({ GROUP => "monkey_island_lonesome", VALUE => $phrase });
+        is $tm->get_secret_inserted_part_count("monkey_island_lonesome"), 1;
+    } "set part 1, completion status 1/1";
+
+    lives_and {
+        is $tm->get_secret("monkey_island_lonesome"), $phrase;
+    } "retrieve";
+};
+
 
 #
 # cache type "daemon" - multipart secret
 #
-lives_and {
-    $tm->set_secret_part({ GROUP => "monkey_island", PART => 2, VALUE => $phrase2 });
-    is $tm->get_secret_inserted_part_count("monkey_island"), 1;
-} "multipart secret: set part 2, completion status 1/3";
+subtest 'multi part secret' => sub {
+    plan tests => 4;
 
-lives_and {
-    $tm->set_secret_part({ GROUP => "monkey_island", PART => 1, VALUE => $phrase });
-    is $tm->get_secret_inserted_part_count("monkey_island"), 2;
-} "multipart secret: set part 1, completion status 2/3";
+    lives_and {
+        $tm->set_secret_part({ GROUP => "monkey_island", PART => 2, VALUE => $phrase2 });
+        is $tm->get_secret_inserted_part_count("monkey_island"), 1;
+    } "set part 2, completion status 1/3";
 
-lives_and {
-    $tm->set_secret_part({ GROUP => "monkey_island", PART => 3, VALUE => $phrase3 });
-    is $tm->get_secret_inserted_part_count("monkey_island"), 3;
-} "multipart secret: set part 3, completion status 3/3";
+    lives_and {
+        $tm->set_secret_part({ GROUP => "monkey_island", PART => 1, VALUE => $phrase });
+        is $tm->get_secret_inserted_part_count("monkey_island"), 2;
+    } "set part 1, completion status 2/3";
 
-lives_and {
-    is $tm->get_secret("monkey_island"), $phrase.$phrase2.$phrase3;
-} "multipart secret: retrieve";
+    lives_and {
+        $tm->set_secret_part({ GROUP => "monkey_island", PART => 3, VALUE => $phrase3 });
+        is $tm->get_secret_inserted_part_count("monkey_island"), 3;
+    } "set part 3, completion status 3/3";
+
+    lives_and {
+        is $tm->get_secret("monkey_island"), $phrase.$phrase2.$phrase3;
+    } "retrieve";
+};
+
+subtest 'database cache / other instance' => sub {
+    plan tests => 11;
+
+    use_ok 'OpenXPKI::Crypto::SecretManager';
+    use_ok 'OpenXPKI::Crypto::Secret::Plain';
+
+    no warnings 'redefine';
+
+    my $obj_inits = 0;
+    my $orig = \&OpenXPKI::Crypto::SecretManager::_load;
+    local *OpenXPKI::Crypto::SecretManager::_load = sub { $obj_inits++; $orig->(@_) };
+
+    my $cache_reads = 0;
+    my $orig2 = \&OpenXPKI::Crypto::SecretManager::_load_from_cache;
+    local *OpenXPKI::Crypto::SecretManager::_load_from_cache = sub { $cache_reads++; $orig2->(@_) };
+
+    my $secret_updates = 0;
+    my $orig3 = \&OpenXPKI::Crypto::Secret::Plain::thaw;
+    local *OpenXPKI::Crypto::Secret::Plain::thaw = sub { $secret_updates++; $orig3->(@_) };
+
+    is $tm2->is_secret_complete("monkey_island"), 1, 'correctly fetch status "complete"';
+
+    is $obj_inits, 1, '  instance initialized';
+    is $cache_reads, 1, '  cache read';
+    is $secret_updates, 1, '  secret updated';
+
+    is $tm2->get_secret_inserted_part_count("monkey_island"), 3, 'completion status 3/3';
+    is $obj_inits, 1, '  no init on follow up queries';
+
+    sleep 2;
+
+    lives_and {
+        is $tm2->is_secret_complete("monkey_island"), 1;
+    } 'correctly fetch status "complete" after "cache_recheck_interval"';
+
+    is $cache_reads, 2, '  cache read';
+    is $secret_updates, 1, '  secret NOT updated because of same cache checksum';
+};
 
 lives_and {
     # clear_secret() calls OpenXPKI::Control::Server->new->cmd_reload which wants to read
@@ -164,21 +220,35 @@ lives_and {
     is $tm->get_secret_inserted_part_count("monkey_island"), 0;
 } "clear secret, completion status 0/3";
 
+lives_and {
+    is $tm2->is_secret_complete("monkey_island"), 1;
+} "other instance: incorrectly fetch status 'complete' during 'cache_recheck_interval'";
+
+sleep 2;
+
+lives_and {
+    is $tm2->is_secret_complete("monkey_island"), 0;
+} "other instance: correctly fetch status 'incomplete' after 'cache_recheck_interval'";
+
 #
 # Cache type "session"
 # (also see issue #591: cache type "session" causes a validation error in Session::Data)
 #
-lives_and {
-    is $tm->get_secret("monkey_island_session"), "onceuponatime";
-} "session cache: retrieve initial secret from config";
+subtest 'session cache' => sub {
+    plan tests => 3;
 
-lives_ok {
-    $tm->set_secret_part({ GROUP => "monkey_island_session", VALUE => "peace_pipe" });
-} "session cache: store secret";
+    lives_and {
+        is $tm->get_secret("monkey_island_session"), "onceuponatime";
+    } "retrieve initial secret from config";
 
-lives_and {
-    is $tm->get_secret("monkey_island_session"), "peace_pipe";
-} "session cache: retrieve secret";
+    lives_ok {
+        $tm->set_secret_part({ GROUP => "monkey_island_session", VALUE => "peace_pipe" });
+    } "store secret";
+
+    lives_and {
+        is $tm->get_secret("monkey_island_session"), "peace_pipe";
+    } "retrieve secret";
+};
 
 #
 # Missing cache type
@@ -190,50 +260,16 @@ throws_ok {
 #
 # Imported global secret
 #
-lives_and {
-    is $tm->is_secret_complete("default"), 1;
-} "imported global secret: secret is complete";
+subtest 'imported global secret' => sub {
+    plan tests => 2;
 
-lives_and {
-    is $tm->get_secret("default"), "beetroot";
-} "imported global secret: secret is correct";
+    lives_and {
+        is $tm->is_secret_complete("default"), 1;
+    } "secret is complete";
 
-#
-# Database caching
-#
-my $tm2;
-lives_ok {
-    $tm2 = OpenXPKI::Crypto::TokenManager->new({ TMPDIR => $temp_tokenmanager });
-} "TokenManager instance 2";
-
-lives_and {
-    # clear_secret() calls OpenXPKI::Control::Server::cmd_reload which wants to read
-    # some (non-existing) config and kill the (non-running) server...
-    no warnings 'redefine';
-    local *OpenXPKI::Control::Server::cmd_reload = sub { note "intercepted OpenXPKI::Control::Server::cmd_reload()" };
-
-    $tm->clear_secret("monkey_island");
-    $tm->set_secret_part({ GROUP => "monkey_island", PART => 2, VALUE => $phrase });
-    is $tm->get_secret_inserted_part_count("monkey_island"), 1;
-} "cache test: instance 1 - completion status 1/3";
-
-my $calls = 0;
-
-no warnings 'redefine';
-my $orig = \&OpenXPKI::Crypto::SecretManager::_load;
-local *OpenXPKI::Crypto::SecretManager::_load = sub { $calls++; $orig->(@_) };
-
-lives_and {
-    is $tm2->get_secret_inserted_part_count("monkey_island"), 1;
-} "cache test: instance 2 - completion status 1/3";
-
-is $calls, 1, "cache test: instance 2 - cache is read once";
-
-$calls = 0;
-
-lives_and {
-    $tm2->is_secret_complete("monkey_island");
-    is $calls, 0;
-} "cache test: instance 2 - cache is not read on follow up queries";
+    lives_and {
+        is $tm->get_secret("default"), "beetroot";
+    } "secret is correct";
+};
 
 1;
