@@ -65,8 +65,7 @@ and (the serialized data) from the cache.
 
 =cut
 
-sub _get_secret_def {
-    my ($self, $alias, $return_undef_if_not_found) = @_;
+sub _get_secret_def ($self, $alias, $return_undef_if_not_found = 0) {
     my $def;
 
     my $realm = CTX('session')->data->pki_realm;
@@ -123,9 +122,7 @@ Set the named secret to the given C<$def> I<HashRef>.
 
 =cut
 
-sub _set_secret {
-    my ($self, $realm, $group, $def) = @_;
-
+sub _set_secret ($self, $realm, $group, $def) {
     $self->secrets->{$realm} //= {};
     $self->secrets->{$realm}->{$group} = $def;
 }
@@ -146,8 +143,7 @@ Returns:
 
 =cut
 
-sub _load {
-    my ($self, $confpath, $realm, $alias) = @_;
+sub _load ($self, $confpath, $realm, $alias) {
     ##! 1: "start: alias '$realm.$alias'"
 
     OpenXPKI::Exception->throw (
@@ -180,8 +176,7 @@ the given config data I<HashRef>.
 
 =cut
 
-sub _create_object {
-    my ($self, $def) = @_;
+sub _create_object ($self, $def) {
     ##! 1: "start"
 
     my $realm = $def->{_realm};
@@ -309,8 +304,7 @@ Returns an I<ArrayRef> of all C<n> share names.
 
 =cut
 
-sub _get_encryptedshare_names {
-    my ($self, $template, $alias, $count) = @_;
+sub _get_encryptedshare_names ($self, $template, $alias, $count) {
     my @result = ();
     ##! 16: "Generating share names from template $template (n = $count)"
 
@@ -351,9 +345,7 @@ L<OpenXPKI::Crypto::SecretRole/thaw> or C<undef>.
 
 =cut
 
-sub _load_from_cache {
-    my ($self, $realm, $alias, $cache_type) = @_;
-
+sub _load_from_cache ($self, $realm, $alias, $cache_type) {
     OpenXPKI::Exception->throw (
         message => "No cache type given for secret",
         params  => { REALM => $realm, GROUP => $alias }
@@ -402,9 +394,7 @@ Save the secret's serialized data to the cache (session or DB).
 
 =cut
 
-sub _save_to_cache {
-    my ($self, $realm, $alias, $cache_type, $dump) = @_;
-
+sub _save_to_cache ($self, $realm, $alias, $cache_type, $dump) {
     $cache_type = lc($cache_type || "");
 
     # FIXME Implement different storage options in role or class
@@ -442,9 +432,7 @@ Removes the secret's serialized data from the cache (session or DB).
 
 =cut
 
-sub _clear_cache {
-    my ($self, $def) = @_;
-
+sub _clear_cache ($self, $def) {
     my $cache_type = lc($def->{cache} || "");
     my $realm = $def->{_realm};
     my $alias = $def->{_alias};
@@ -502,11 +490,8 @@ Returns:
 
 =cut
 
-sub get_infos {
+sub get_infos ($self) {
     ##! 1: "start"
-    my $self = shift;
-
-    ##! 2: "init"
     my $realm = CTX('session')->data->pki_realm;
 
     my @name_list;
@@ -548,8 +533,7 @@ Returns the number of required parts to complete this secret.
 
 =cut
 
-sub get_required_part_count {
-    my ($self, $alias) = @_;
+sub get_required_part_count ($self, $alias) {
     my $def = $self->_get_secret_def($alias);
     return $def->{_ref}->required_part_count;
 }
@@ -560,8 +544,7 @@ Returns the number of parts that are already inserted / set.
 
 =cut
 
-sub get_inserted_part_count {
-    my ($self, $alias) = @_;
+sub get_inserted_part_count ($self, $alias) {
     my $def = $self->_get_secret_def($alias);
     return $def->{_ref}->inserted_part_count;
 }
@@ -574,8 +557,7 @@ Returns C<0> or C<1>.
 
 =cut
 
-sub is_complete {
-    my ($self, $alias) = @_;
+sub is_complete ($self, $alias) {
     ##! 1: "start"
     return $self->_get_secret_def($alias)->{_ref}->is_complete ? 1 : 0;
 }
@@ -590,8 +572,7 @@ Returns the secret value or C<undef> if the secret is not complete.
 
 =cut
 
-sub get_secret {
-    my ($self, $alias) = @_;
+sub get_secret ($self, $alias) {
     ##! 1: "start"
 
     return undef unless $self->is_complete($alias);
@@ -614,8 +595,7 @@ omit C<PART>.
 
 =cut
 
-sub set_part {
-    my ($self, $args) = @_;
+sub set_part ($self, $args) {
     ##! 1: "start"
     my $alias = $args->{GROUP};
     my $part  = $args->{PART};
@@ -641,11 +621,8 @@ Purge the secret of the given name.
 
 =cut
 
-sub clear {
-    my ($self, $alias) = @_;
+sub clear ($self, $alias) {
     ##! 1: "start"
-
-    ##! 2: "init"
     my $def = $self->_get_secret_def($alias);
 
     $self->_clear_cache($def);
@@ -664,8 +641,7 @@ into the database.
 
 =cut
 
-sub request_transfer {
-    my $self = shift;
+sub request_transfer ($self) {
     my $realm = CTX('session')->data->pki_realm;
 
     my @aliases;
@@ -736,8 +712,7 @@ tries to fill the database entries assigned to this transfer key.
 
 =cut
 
-sub perform_transfer {
-    my ($self, $pubkey) = @_;
+sub perform_transfer ($self, $pubkey) {
     ##! 1: "start"
 
     # create ecc pubkey object for secret sharing
@@ -816,8 +791,7 @@ secret cache so they can be used by all children of this node.
 
 =cut
 
-sub accept_transfer {
-    my ($self, $transfer_id, $pubkey) = @_;
+sub accept_transfer ($self, $transfer_id, $pubkey) {
     ##! 1: "start"
 
     my $realm = CTX('session')->data->pki_realm;
