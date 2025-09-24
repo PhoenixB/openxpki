@@ -63,10 +63,10 @@ sub init_manage ($self, $args) {
         return $self;
     }
 
-    my $status = $self->send_command_v2("is_secret_complete", { secret => $secret }) || 0;
-    return unless defined $status;
+    my $secrets  = $self->send_command_v2("get_secrets");
+    return unless my $status = $secrets->{$secret};
 
-    if ($status) {
+    if ($status->{complete}) {
         $self->page->label('I18N_OPENXPKI_UI_SECRET_CLEAR_SECRET_LABEL');
         $self->main->add_section({
             type => 'text',
@@ -75,7 +75,13 @@ sub init_manage ($self, $args) {
             }
         });
     } else {
-        $self->page->label('I18N_OPENXPKI_UI_SECRET_UNLOCK_LABEL');
+        $self->page->label(
+            'I18N_OPENXPKI_UI_SECRET_UNLOCK_LABEL'.
+            ($status->{required_parts} > 1
+                ? sprintf(' %i/%i', $status->{inserted_parts}+1, $status->{required_parts})
+                : ''
+            )
+        );
         $self->main->add_form(
             action => 'secret!unlock',
             submit_label => 'I18N_OPENXPKI_UI_SECRET_UNLOCK_BUTTON',
@@ -83,6 +89,8 @@ sub init_manage ($self, $args) {
             'name' => 'phrase', 'label' => 'I18N_OPENXPKI_UI_SECRET_PASSPHRASE_LABEL', 'type' => 'password', placeholder => 'I18N_OPENXPKI_UI_SECRET_PASSPHRASE_LABEL',
         )->add_field(
             'name' => 'id', 'type' => 'hidden', value => $secret,
+        )->add_field(
+            'name' => 'part', 'type' => 'hidden', value => ($status->{inserted_parts}+1),
         );
     }
 }
@@ -103,7 +111,13 @@ sub init_clear ($self, $args) {
 sub action_unlock ($self) {
     my $phrase = $self->param('phrase');
     my $secret = $self->param('id');
-    my $msg = $self->send_command_v2( "set_secret_part", { secret => $secret, value => $phrase });
+    my $part = $self->param('part');
+
+    my $msg = $self->send_command_v2( "set_secret_part" => {
+        secret => $secret,
+        part => $part,
+        value => $phrase,
+    } );
 
     $self->log->info('Secret was sent');
     $self->log->trace('Return ' . Dumper $msg) if $self->log->is_trace;
