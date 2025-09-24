@@ -201,7 +201,10 @@ sub __do_init_log {
         $log = OpenXPKI::Server::Log::CLI->new();
     } else {
         ##! 16 'use server logger'
-        $log = get_log();
+        my $config_file = CTX('config')->get('system.server.log4perl');
+        ##! 64: 'before OpenXPKI::Server::Log->new'
+        $log = OpenXPKI::Server::Log->new(config => $config_file);
+        ##! 64: 'log during get_log: ' . $log
     }
 
     OpenXPKI::Server::Context::setcontext({
@@ -423,20 +426,6 @@ sub get_crypto_layer {
     }
 }
 
-sub get_log {
-    ##! 1: "start"
-    my $config_file = CTX('config')->get('system.server.log4perl');
-
-    ## init logging
-    ##! 64: 'before Log->new'
-
-    my $log = OpenXPKI::Server::Log->new (config => $config_file);
-
-    ##! 64: 'log during get_log: ' . $log
-
-    return $log;
-}
-
 sub get_database {
     my ($section, $autocommit) = @_;
 
@@ -602,12 +591,6 @@ Return an instance of the TokenManager class which handles all
 configured cryptographic tokens.
 
 =head2 Non-Cryptographic Object Initialization
-
-=head3 get_log
-
-Returns an instance of the module OpenXPKI::Log.
-
-Requires 'config' in the Server Context.
 
 =head3 get_database
 
