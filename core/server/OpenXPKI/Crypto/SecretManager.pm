@@ -675,12 +675,19 @@ sub set_part ($self, $args) {
     # store in case we need to restore on failure
     my $old_secret = $obj->freeze;
 
-    # FIXME Add try-catch and restore $old_secret in case of failure
-    ##! 2: "setting $alias" . (defined $part ? ", part $part" : "")
-    $obj->set_secret($value, $part); # $part might be undef
+    try {
+        ##! 2: "setting $alias" . (defined $part ? ", part $part" : "")
+        $obj->set_secret($value, $part); # $part might be undef
 
-    $self->_save_to_cache($def->{_realm}, $def->{_alias}, $def->{cache}, $obj->freeze);
-    $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
+        $self->_save_to_cache($def->{_realm}, $def->{_alias}, $def->{cache}, $obj->freeze);
+        $def->{_synced_with_cache} = Time::HiRes::time; # floating point time
+    }
+    catch ($err) {
+        # Restore old secret
+        $obj->clear_secret;
+        $obj->thaw($old_secret);
+        die $err;
+    }
     ##! 1: "finished"
 }
 
