@@ -904,8 +904,8 @@ sub run
             CTX('session')->persist if OpenXPKI::Server::Context::hascontext('session');
             $self->talk($result);
         } catch($err) {
-            if (my $exc = OpenXPKI::Exception->caught()) {
-                $self->__send_error({ EXCEPTION => $exc, });
+            if ($err->isa('OpenXPKI::Exception')) {
+                $self->__send_error({ EXCEPTION => $err });
             } else {
                 $self->__send_error({ ERROR => $err });
             }
