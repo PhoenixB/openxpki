@@ -50,7 +50,7 @@ sub serialize
     eval { $json = $self->{JSON}->encode( $args ); };
     if (!$json) {
         ##! 16: 'Unable to encode to json'
-        ##! 64: $args
+        ##! 64: Dumper($args)
         my $log = Log::Log4perl->get_logger('openxpki.system');
         $log->fatal('Unable to serialize ' . ref $args);
         $log->trace( Dumper $args ) if $log->is_trace;
