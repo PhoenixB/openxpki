@@ -860,12 +860,10 @@ sub run
         try {
             $msg = $self->collect();
         } catch($err) {
-            if (my $exc = OpenXPKI::Exception->caught()) {
-                $exc->rethrow();
-            }
-            OpenXPKI::Exception::Socket->throw (
+            $err->rethrow if $err->isa('OpenXPKI::Exception');
+            OpenXPKI::Exception::Socket->throw(
                 message => "unable to collect message",
-                params  => { error => $err }
+                params  => { error => "$err" }
             );
         }
 
@@ -907,7 +905,7 @@ sub run
             if ($err->isa('OpenXPKI::Exception')) {
                 $self->__send_error({ EXCEPTION => $err });
             } else {
-                $self->__send_error({ ERROR => $err });
+                $self->__send_error({ ERROR => "$err" });
             }
             next MESSAGE;
         }
