@@ -45,7 +45,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "literal",
                 value => "root",
                 cache => "daemon",
-                cache_recheck_incomplete_interval => 5,
+                cache_check => 5,
             },
             # Plain secret, 1 part
             monkey_island_lonesome => {
@@ -53,7 +53,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "plain",
                 total_shares => 1,
                 cache => "daemon",
-                cache_recheck_incomplete_interval => 5,
+                cache_check => 5,
                 kcv => '$argon2id$v=19$m=32768,t=3,p=1$NnJ6dGVBY2FwdGxkVE50ZGZRQkE4QT09$Q3d2HAWq7UCMLdipbacwYQ',
             },
             # Plain secret, 3 parts
@@ -62,8 +62,8 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "plain",
                 total_shares => 3,
                 cache => "daemon",
-                cache_recheck_interval => 2,
-                cache_recheck_incomplete_interval => 2,
+                cache_check_if_complete => 2,
+                cache_check => 2,
             },
             # Cache type "session"
             monkey_island_session => {
@@ -71,7 +71,7 @@ my $oxitest = OpenXPKI::Test->new(
                 method => "literal",
                 value => "onceuponatime",
                 cache => "session",
-                cache_recheck_incomplete_interval => 5,
+                cache_check => 5,
             },
             # Secret with missing cache type
             lechuck => {
@@ -204,7 +204,7 @@ subtest 'database cache / other instance' => sub {
 
     lives_and {
         is $tm2->is_secret_complete("monkey_island"), 1;
-    } 'correctly fetch status "complete" after "cache_recheck_interval"';
+    } 'correctly fetch status "complete" after "cache_check_if_complete"';
 
     is $cache_reads, 2, '  cache read';
     is $secret_updates, 1, '  secret NOT updated because of same cache checksum';
@@ -222,13 +222,13 @@ lives_and {
 
 lives_and {
     is $tm2->is_secret_complete("monkey_island"), 1;
-} "other instance: incorrectly fetch status 'complete' during 'cache_recheck_interval'";
+} "other instance: incorrectly fetch status 'complete' during 'cache_check_if_complete'";
 
 sleep 2;
 
 lives_and {
     is $tm2->is_secret_complete("monkey_island"), 0;
-} "other instance: correctly fetch status 'incomplete' after 'cache_recheck_interval'";
+} "other instance: correctly fetch status 'incomplete' after 'cache_check_if_complete'";
 
 #
 # Cache type "session"

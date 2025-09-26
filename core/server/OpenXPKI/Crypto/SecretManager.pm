@@ -16,6 +16,7 @@ use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Crypto::VolatileVault;
 use OpenXPKI::Serialization::Simple;
 use OpenXPKI::FileUtils;
+use OpenXPKI::Defaults;
 
 =head1 NAME
 
@@ -158,8 +159,8 @@ sub _load ($self, $confpath, $realm, $alias) {
     return $def if $def->{import}; # stop processing as we'll throw away this hash if a global secret is referenced
 
     # defaults
-    $def->{cache_recheck_interval} //= 60;
-    $def->{cache_recheck_incomplete_interval} //= 1;
+    $def->{cache_check_if_complete} //= $OpenXPKI::Defaults::CRYPTO_SECRET_CACHE_CHECK_IF_COMPLETE;
+    $def->{cache_check} //= $OpenXPKI::Defaults::CRYPTO_SECRET_CACHE_CHECK;
 
     # force "no cache" for literal secrets
     $def->{cache} = "none" if ($def->{method} // "") eq "literal";
@@ -488,10 +489,10 @@ Update the in-memory copy of the secret with the cache value, but only if:
 
 =over
 
-=item * the secret is incomplete and C<cache_recheck_incomplete_interval>
+=item * the secret is incomplete and C<cache_check>
 seconds elapsed or
 
-=item * the secret is complete but C<cache_recheck_interval> elapsed
+=item * the secret is complete but C<cache_check_if_complete> elapsed
 
 =back
 
@@ -508,9 +509,9 @@ sub _update_from_cache ($self, $def) {
 
     # only update if intervals elapsed
     return if (
-        ($is_complete and $elapsed_since_sync < $def->{cache_recheck_interval})
+        ($is_complete and $elapsed_since_sync < $def->{cache_check_if_complete})
         or
-        (not $is_complete and $elapsed_since_sync < $def->{cache_recheck_incomplete_interval})
+        (not $is_complete and $elapsed_since_sync < $def->{cache_check})
     );
 
     my $serialized = $self->_load_from_cache($def->{_realm}, $def->{_alias}, $def->{cache}); # might be undef

@@ -18,4 +18,8 @@ our $CLIENT_SOCKET  = '/run/openxpki-clientd/openxpki-clientd.sock';
 our $CLIENT_PID     = '/run/openxpki-clientd/openxpki-clientd.pid';
 our $CLIENT_CONFIG_DIR = '/etc/openxpki/client.d/';
 
+# interval in seconds after which in-memory secrets are checked against cache
+our $CRYPTO_SECRET_CACHE_CHECK = 1;
+our $CRYPTO_SECRET_CACHE_CHECK_IF_COMPLETE = 60;
+
 1;
