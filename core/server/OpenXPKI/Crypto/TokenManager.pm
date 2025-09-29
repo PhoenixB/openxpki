@@ -204,8 +204,6 @@ sub __add_token {
     my $secret;
 
     ##! 16: "add token type $type, name: $name"
-    my $backend_api_class = $config->get("system.crypto.tokenapi.$type");
-    $backend_api_class = "OpenXPKI::Crypto::Backend::API" unless ($backend_api_class);
 
     my $config_name_group = $name;
     # Magic inheritance code
@@ -235,6 +233,10 @@ sub __add_token {
         message  => "No backend class set for token $name",
         params => { NAME => $name, GROUP => $config_name_group }
     ) unless $backend_class;
+
+
+    # remove config layer but keep it as variable for now
+    my $backend_api_class = "OpenXPKI::Crypto::Backend::API";
 
     eval { Module::Load::load($backend_class); Module::Load::load($backend_api_class); };
     OpenXPKI::Exception->throw (
