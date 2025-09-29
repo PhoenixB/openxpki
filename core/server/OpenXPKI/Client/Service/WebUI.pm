@@ -1035,7 +1035,10 @@ sub ui_response_to_json ($self, $ui_response) {
     else {
         my $data = $ui_response->resolve; # resolve response DTOs into nested HashRef
 
-        # show message of the day if we have a page section (may overwrite status)
+        # Show message of the day if we have a page section (so it's not sent
+        # in a request to !bootstrap or !redirect).
+        # THIS WILL OVERWRITE ANY PREVIOUSLY SET STATUS.
+        # FIXME Send MOTD with the bootstrap data and decide in Ember UI when and how to show (GH-958)
         if ($ui_response->page->is_set && (my $motd = $self->session->param('motd'))) {
             $self->session->param('motd', undef);
             $data->{status} = $motd;

@@ -46,6 +46,9 @@ sub init_html ($self, $args) {
 
     $self->log->trace('Sending HTML content: ' . join('', @content)) if $self->log->is_trace;
 
+    # trigger display of MOTD in OpenXPKI::Client::Service::WebUI->ui_response_to_json()
+    $self->set_page(label => '');
+
     $self->main->add_section({
         type => 'text',
         content => {
