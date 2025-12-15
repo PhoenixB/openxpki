@@ -9,6 +9,9 @@ all: cpan openxpki repo test
 
 Makefile.local: ;
 
+env.list:
+	touch env.list
+
 build-deps.lst:
 	cp ../../package/debian/build-deps.lst .
 
@@ -29,24 +32,27 @@ $(EXTRA_DIRS):
 
 dirs: $(EXTRA_DIRS)
 
-shell:
+shell: env.list
 	docker run --entrypoint /bin/bash --rm -ti \
+		--env-file env.list \
 		-v $(abspath ../../):/openxpki:ro \
 		-v $(abspath repository):/repository \
 		-v $(abspath extra:/extra-packages) \
 		-v $(abspath packages):/packages \
 		-v $(abspath secret/debian2025.key):/signkey:ro oxibuilder4bookworm
-repo:
+repo: env.list
 	docker run --rm -ti \
+		--env-file env.list \
 		-v $(abspath ../../):/openxpki:ro \
 		-v $(abspath repository):/repository \
 		-v $(abspath extra:/extra-packages) \
 		-v $(abspath packages):/packages \
 		-v $(abspath secret/debian2025.key):/signkey:ro oxibuilder4bookworm repo
 
-.DEFAULT: packages
+.DEFAULT: env.list packages
 	docker run --rm -ti \
-	    -v $(abspath ../../):/openxpki:ro \
+		--env-file env.list \
+		-v $(abspath ../../):/openxpki:ro \
 		-v $(abspath deps):/deps \
 		-v $(abspath packages):/packages \
 		-e OPENXPKI_BUILD_DEBUG=${OPENXPKI_BUILD_DEBUG} \
