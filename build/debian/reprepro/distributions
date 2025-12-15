@@ -1,7 +1,7 @@
 Origin: The OpenXPKI Project
 Label: The OpenXPKI Project
 Codename: bookworm
-Architectures: amd64
+Architectures: arm64
 Components: release
 Description: Repository for the OpenXPKI core software and its dependencies.
-SignWith: 0x68ACB0D02C23C909
+SignWith: 0xDF791082E2B77CC5
