@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -41,7 +41,7 @@ sub _evaluate {
     if (!defined $res) {
         ##! 16: 'not defined'
         $log->debug("CertificateAttribute condition failed - no values found");
-        condition_error('CertificateAttribute condition failed');
+        workflow_error('CertificateAttribute condition failed');
     }
 
     ##! 64: $res
@@ -55,10 +55,10 @@ sub _evaluate {
 
     my @values = @{$res->{$attribute}};
     if ($condition eq 'is_value') {
-        condition_error('CertificateAttribute condition is_value failed (more then one item)')
+        workflow_error('CertificateAttribute condition is_value failed (more then one item)')
             if (@values > 1);
 
-        condition_error('CertificateAttribute condition is_value does not match')
+        workflow_error('CertificateAttribute condition is_value does not match')
             if ($values[0] ne $value);
 
         $log->debug('CertificateHasAttribute is_value passed');
@@ -70,10 +70,10 @@ sub _evaluate {
             $log->debug('CertificateHasAttribute contains value ' . $value);
             return 1;
         }
-        condition_error('CertificateAttribute condition has_value failed');
+        workflow_error('CertificateAttribute condition has_value failed');
     }
 
-    condition_error('CertificateAttribute unsupported condition');
+    workflow_error('CertificateAttribute unsupported condition');
 
     ##! 16: 'end'
 }

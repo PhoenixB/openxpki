@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Serialization::Simple;
 
@@ -19,7 +19,7 @@ sub _evaluate {
 
     if (!$identifier) {
         if ($self->param('empty_ok')) {
-            condition_error('No identifier passed to CertificateIsLocalEntity');
+            workflow_error('No identifier passed to CertificateIsLocalEntity');
         } else {
             configuration_error('No identifier passed to CertificateIsLocalEntity');
         }
@@ -27,7 +27,7 @@ sub _evaluate {
 
     if (!CTX('api2')->is_local_entity( identifier => $identifier, pki_realm => $pki_realm )) {
         CTX('log')->application()->debug("Cert is not a local entity");
-        condition_error 'cert is not a local entity';
+        workflow_error 'cert is not a local entity';
     }
 
     return 1;

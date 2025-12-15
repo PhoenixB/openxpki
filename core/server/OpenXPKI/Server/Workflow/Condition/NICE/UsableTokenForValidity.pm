@@ -4,7 +4,7 @@ use OpenXPKI;
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 
 sub _evaluate {
@@ -65,7 +65,7 @@ sub _evaluate {
     };
 
     if (!$issuing_ca) {
-        condition_error('nice no useable ca token found');
+        workflow_error('nice no useable ca token found');
     }
 
     return 1;

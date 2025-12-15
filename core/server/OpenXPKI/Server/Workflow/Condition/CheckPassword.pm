@@ -4,7 +4,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Password;
 
@@ -16,7 +16,7 @@ sub _evaluate {
     my $context  = $workflow->context();
 
     my $plain = $self->param('password') || $context->param('_password');
-    condition_error('No password was given') unless($plain);
+    workflow_error('No password was given') unless($plain);
 
     my $encoded = $self->param('encoded');
     configuration_error('Nothing to compare against found') unless($encoded);
@@ -30,7 +30,7 @@ sub _evaluate {
         configuration_error($EVAL_ERROR);
     }
 
-    condition_error('Passwords do not match') unless($res);
+    workflow_error('Passwords do not match') unless($res);
 
     return 1;
 }

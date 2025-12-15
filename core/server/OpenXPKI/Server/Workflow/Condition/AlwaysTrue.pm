@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 sub evaluate {
     return 1;

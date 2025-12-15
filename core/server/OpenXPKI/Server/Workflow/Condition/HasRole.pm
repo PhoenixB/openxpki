@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 __PACKAGE__->mk_accessors( 'expected_roles' );
@@ -42,7 +42,7 @@ sub evaluate
 
     ##! 64: 'session role: ' . $session_role
 
-    condition_error ("$session_role mismatches $expected_roles") unless ($roles{$session_role});
+    workflow_error ("$session_role mismatches $expected_roles") unless ($roles{$session_role});
 
     return 1;
 }

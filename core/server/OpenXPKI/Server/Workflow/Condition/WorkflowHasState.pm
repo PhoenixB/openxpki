@@ -4,7 +4,7 @@ use OpenXPKI;
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error );
+use Workflow::Exception qw( workflow_error );
 
 
 sub _evaluate
@@ -25,14 +25,14 @@ sub _evaluate
     };
 
     if (!$wfl) {
-        condition_error('No workflow with id #'.$wf_id.' found');
+        workflow_error('No workflow with id #'.$wf_id.' found');
     }
 
     if (my $state = $self->param('proc_state')) {
         my ($not, $state) = $state =~ m{(!?)(\w+)};
         my $res = ($state ne $wfl->{workflow_proc_state});
         if ($not xor $res) {
-            condition_error('Workflow is not in expected proc_state');
+            workflow_error('Workflow is not in expected proc_state');
         }
     }
 
@@ -40,7 +40,7 @@ sub _evaluate
         my ($not, $state) = $state =~ m{(!?)(\w+)};
         my $res = ($state ne $wfl->{workflow_state});
         if ($not xor $res) {
-            condition_error('Workflow is not in expected state');
+            workflow_error('Workflow is not in expected state');
         }
     }
 

@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( Workflow::Condition );
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error );
+use Workflow::Exception qw( workflow_error );
 
 
 sub evaluate
@@ -21,7 +21,7 @@ sub evaluate
 
 
     if ($wf_creator ne $current_user) {
-        condition_error ('I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_WORKFLOWCREATOR_CREATOR_AND_USER_DIFFER');
+        workflow_error ('I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_WORKFLOWCREATOR_CREATOR_AND_USER_DIFFER');
     }
     return 1;
 }

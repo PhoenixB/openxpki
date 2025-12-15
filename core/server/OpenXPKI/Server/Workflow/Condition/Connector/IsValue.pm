@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -32,7 +32,7 @@ sub _evaluate
         $value //= 'undef';
         ##! 16: " Values differ - expected: $expected, found: $value "
         CTX('log')->application()->debug("Check IsValue '$value' != '$expected'");
-        condition_error("I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_CONNECTOR_IS_VALUE");
+        workflow_error("I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_CONNECTOR_IS_VALUE");
     }
     ##! 32: sprintf ' Values match - expected: %s, found: %s ', $expected , $value
     return 1;

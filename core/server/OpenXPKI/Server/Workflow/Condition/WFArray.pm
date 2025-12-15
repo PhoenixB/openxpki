@@ -4,7 +4,7 @@ use OpenXPKI;
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Workflow::WFObject::WFArray;
 
 
@@ -28,7 +28,7 @@ sub _evaluate {
         CTX('log')->application()->debug("Testing if WFArray ".$array_name." is empty");
 
         if ( $array->count() != 0 ) {
-            condition_error ($self->param('error') || 'array not empty');
+            workflow_error ($self->param('error') || 'array not empty');
         }
 
     }
@@ -37,7 +37,7 @@ sub _evaluate {
         CTX('log')->application()->debug("Testing if WFArray ".$array_name." is not empty");
 
         if ( $array->count() < 1 ) {
-            condition_error ($self->param('error') || 'array is empty');
+            workflow_error ($self->param('error') || 'array is empty');
         }
 
     }
@@ -65,7 +65,7 @@ sub _evaluate {
             return 1 if ($cnt >= $val);
         }
         ##! 16: 'Condition failed'
-        condition_error ($self->param('error') || 'array has invalid item count');
+        workflow_error ($self->param('error') || 'array has invalid item count');
 
     }
     elsif ( $condition eq 'match' || $condition eq 'nomatch' ) {
@@ -94,7 +94,7 @@ sub _evaluate {
         }
 
         if (scalar @errors) {
-            condition_error ($self->param('error') || 'array does not match regex');
+            workflow_error ($self->param('error') || 'array does not match regex');
         }
 
     }

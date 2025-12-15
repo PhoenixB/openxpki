@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -34,7 +34,7 @@ sub _evaluate {
     if (!defined $res) {
         ##! 16: 'owner is not defined'
         CTX('log')->application()->debug("CertificateHasSuccessor condition failed - no successor found");
-        condition_error('certificate has successor failed');
+        workflow_error('certificate has successor failed');
     }
 
     CTX('log')->application()->debug("CertificateHasSuccessor condition passed:" . $res->{identifier});

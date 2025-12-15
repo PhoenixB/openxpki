@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 sub _evaluate {
 
@@ -14,42 +14,42 @@ sub _evaluate {
     my $op = $self->param('operator') || configuration_error('no operator given');
 
     # value might be set via _map and be empty
-    my $reference = $self->param('value') // condition_error('reference is empty');
+    my $reference = $self->param('value') // workflow_error('reference is empty');
 
     my $value = $wf->context->param->{$key};
 
     ##! 32: "$key / $reference /  $value"
     $self->log->info("Compare $key to reference value");
 
-    condition_error('value is not numeric')
+    workflow_error('value is not numeric')
         unless($value =~ m{\A\d+(\.\d+)?\z});
 
-    condition_error('reference value is not numeric')
+    workflow_error('reference value is not numeric')
         unless($reference =~ m{\A\d+(\.\d+)?\z});
 
 
     if ($op eq 'is') {
-        condition_error('value is not equal to reference')
+        workflow_error('value is not equal to reference')
             unless ($value == $reference);
     }
     elsif ($op eq 'isnot') {
-        condition_error('value is equal to reference but should not')
+        workflow_error('value is equal to reference but should not')
             unless ($value != $reference);
     }
     elsif ($op eq 'lt') {
-        condition_error('value is not less than reference')
+        workflow_error('value is not less than reference')
             unless ($value < $reference);
     }
     elsif ($op eq 'lte') {
-        condition_error('value is not less or equal than reference')
+        workflow_error('value is not less or equal than reference')
             unless ($value <= $reference);
     }
     elsif ($op eq 'gt') {
-        condition_error('value is not greater than reference')
+        workflow_error('value is not greater than reference')
             unless ($value > $reference);
     }
     elsif ($op eq 'gte') {
-        condition_error('value is not greater or equal than reference')
+        workflow_error('value is not greater or equal than reference')
             unless ($value >= $reference);
     } else {
         configuration_error('unexpected operator');

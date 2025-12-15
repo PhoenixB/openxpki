@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -47,30 +47,30 @@ sub _evaluate
     if ($condition eq 'exists') {
         if (!$msg) {
             ##! 64: ' value does not exist'
-            condition_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_DOES_NOT_EXIST';
+            workflow_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_DOES_NOT_EXIST';
         }
     } elsif ($condition eq 'notnull') {
         if ($datapool_value eq '') {
             ##! 64: ' value is empty'
-            condition_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_VALUE_EMPTY';
+            workflow_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_VALUE_EMPTY';
         }
     } elsif ($condition eq 'equals') {
 
         my $val = $self->param('value') // configuration_error('You must provide a value to compare');
         if ($datapool_value ne $self->param('value')) {
             ##! 64: ' value equality mismatch '
-            condition_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_EQUALITY_MISMATCH';
+            workflow_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_EQUALITY_MISMATCH';
         }
     } elsif ($condition eq 'regex') {
         my $val = $self->param('value') || configuration_error('You must provide a non-empty string as regex');
         my $regex = qr/$val/ms;
         if ($datapool_value !~ /$regex/) {
             ##! 64: ' value regex mismatch '
-            condition_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOL_REGEX_MISMATCH';
+            workflow_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOL_REGEX_MISMATCH';
         }
     } else {
         ##! 64: ' invalid condition '
-        condition_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_INVALID_CONDITION';
+        workflow_error 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_DATAPOOLENTRY_INVALID_CONDITION';
     }
 
 

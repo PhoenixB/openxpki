@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 sub _evaluate {
 
@@ -19,11 +19,11 @@ sub _evaluate {
     ##! 32: "$key / $reference /  $value"
     $self->log->info("Match $key against reference value");
 
-    condition_error('value is undefined') unless(defined $value);
+    workflow_error('value is undefined') unless(defined $value);
 
-    condition_error('value is empty') unless($value ne "");
+    workflow_error('value is empty') unless($value ne "");
 
-    condition_error('value does not match reference') unless($value eq $reference);
+    workflow_error('value does not match reference') unless($value eq $reference);
 
     return 1;
 

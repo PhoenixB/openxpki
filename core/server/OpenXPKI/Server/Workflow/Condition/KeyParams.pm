@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::DateTime;
 
@@ -30,7 +30,7 @@ sub _evaluate
 
         # for explicit key rules we expect the algorithms on the first level
         if (!$key_rules->{$key_alg}) {
-            condition_error('Used key algorithm is not allowed');
+            workflow_error('Used key algorithm is not allowed');
         }
         $key_rules = $key_rules->{$key_alg};
 
@@ -48,7 +48,7 @@ sub _evaluate
         if (!grep(/\A$key_alg\z/, @{$algs})) {
             ##! 8: "KeyParam validation failed on algo $key_alg"
             CTX('log')->application()->debug("KeyParam validation failed on algo $key_alg");
-            condition_error('Used key algorithm is not allowed');
+            workflow_error('Used key algorithm is not allowed');
         }
 
         $key_rules = CTX('api2')->get_key_params( profile => $cert_profile, alg => $key_alg, showall => 1 );
@@ -66,7 +66,7 @@ sub _evaluate
         my $err = '';
         map { $err .=  $_.': '.($key_params->{$_} // '?') } @{$result};
         CTX('log')->application()->debug("KeyParam validation failed: $err");
-        condition_error("Invalid key parameters used: $err");
+        workflow_error("Invalid key parameters used: $err");
     }
 
     ##! 1: 'Validation succeeded'

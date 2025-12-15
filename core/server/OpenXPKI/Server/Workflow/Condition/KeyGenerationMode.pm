@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::DateTime;
 
@@ -57,7 +57,7 @@ sub _evaluate
     CTX('log')->application()->debug("KeyGenerationMode condition result: $result ($mode ?= $config_mode)");
 
     if (!$result) {
-        condition_error("Requested mode $mode is not allowed ($config_mode)");
+        workflow_error("Requested mode $mode is not allowed ($config_mode)");
     }
 
     return 1;

@@ -4,7 +4,7 @@ use OpenXPKI;
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Workflow::WFObject::WFHash;
 
 
@@ -39,14 +39,14 @@ sub _evaluate {
            return 1;
        }
        ##! 16: ' Entry not defined '
-       condition_error 'Condition wfhash key '.$key.' is not defined';
+       workflow_error 'Condition wfhash key '.$key.' is not defined';
     } elsif ($condition eq 'key_nonempty') {
        if (defined $val && $val) {
            ##! 16: ' Entry not empty '
            return 1;
        }
        ##! 16: ' Entry is empty '
-       condition_error 'Condition wfhash key '.$key.' is empty';
+       workflow_error 'Condition wfhash key '.$key.' is empty';
     } elsif ($condition eq 'is_value') {
         my $value = $self->param('value') // '';
         if (defined $val && $val eq $value) {
@@ -54,7 +54,7 @@ sub _evaluate {
             return 1;
         }
          ##! 16: ' Entry does not match value ' . $value
-        condition_error 'Condition wfhash key '.$key.' does not match expected value ';
+        workflow_error 'Condition wfhash key '.$key.' does not match expected value ';
     } else {
         configuration_error
             "Invalid condition " . $condition . " in " .

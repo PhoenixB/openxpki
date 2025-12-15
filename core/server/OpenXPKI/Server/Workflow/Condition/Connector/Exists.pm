@@ -4,7 +4,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -29,7 +29,7 @@ sub _evaluate
 
 
     if (!$exists) {
-        condition_error("I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_CONNECTOR_EXISTS_FAILED");
+        workflow_error("I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_CONNECTOR_EXISTS_FAILED");
     }
 
     ##! 32: sprintf 'Path found - ' .$path

@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::DN;
 
@@ -18,7 +18,7 @@ sub _evaluate {
     my $subject  = $self->param('cert_subject') // $context->param('cert_subject');
 
     if (!$subject) {
-        condition_error('Subject is empty!');
+        workflow_error('Subject is empty!');
     }
 
     my %dn = OpenXPKI::DN->new( $subject )->get_hashed_content();
@@ -40,8 +40,8 @@ sub _evaluate {
         ##! 16: 'Testing rdn ' . $rdn . ' with maxlen of ' . $maxlen
         ##! 32: 'Component ' . Dumper $dn{$rdn}
         foreach my $comp (@{$dn{$rdn}}) {
-            condition_error('Subject has empty components') if ($comp eq '');
-            condition_error('RDN $rdn exceeds $maxlen character limit') if (length($comp) > $maxlen);
+            workflow_error('Subject has empty components') if ($comp eq '');
+            workflow_error('RDN $rdn exceeds $maxlen character limit') if (length($comp) > $maxlen);
         }
     }
 

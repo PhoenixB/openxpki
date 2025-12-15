@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 
 
@@ -32,14 +32,14 @@ sub evaluate {
         ##! 16: 'owner is not defined'
         CTX('log')->application()->debug("IsCertificateOwner condition failed - no owner found");
 
-        condition_error('user is certificate owner no owner found');
+        workflow_error('user is certificate owner no owner found');
     }
 
     if (!$res) {
         ##! 16: 'owner does not match'
         CTX('log')->application()->debug("IsCertificateOwner condition failed - owner not matches");
 
-        condition_error('user is certificate owner failed');
+        workflow_error('user is certificate owner failed');
     }
 
     return 1;

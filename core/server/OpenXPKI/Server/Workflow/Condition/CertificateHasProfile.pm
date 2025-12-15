@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Serialization::Simple;
 
@@ -18,7 +18,7 @@ sub _evaluate {
 
     if (!$identifier) {
         if ($self->param('empty_ok')) {
-            condition_error('No identifier passed to CertificateHasProfile') ;
+            workflow_error('No identifier passed to CertificateHasProfile') ;
         } else {
             configuration_error('No identifier passed to CertificateHasProfile');
         }
@@ -28,12 +28,12 @@ sub _evaluate {
     configuration_error('You must set expected_profile') unless($expected_profile);
 
     my $profile = CTX('api2')->get_profile_for_cert( identifier => $identifier );
-    condition_error('No profile was found') unless ($profile);
+    workflow_error('No profile was found') unless ($profile);
 
     ##! 16: "Is: $profile - expect: $expected_profile"
     if ($expected_profile ne $profile) {
         CTX('log')->application()->debug("Cert profile check failed: $profile != $expected_profile");
-        condition_error 'Profiles dont match in CertificateHasProfile';
+        workflow_error 'Profiles dont match in CertificateHasProfile';
     }
 
     return 1;

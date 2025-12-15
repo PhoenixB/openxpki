@@ -4,7 +4,7 @@ use OpenXPKI;
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
-use Workflow::Exception qw( condition_error );
+use Workflow::Exception qw( workflow_error );
 
 
 sub _evaluate
@@ -16,12 +16,12 @@ sub _evaluate
     $param->{username} = $self->param("username") if ($self->param("username"));
     $param->{mail} = $self->param("mail") if ($self->param("mail"));
 
-    condition_error("Neither username nor mail given") if (!keys %$param);
+    workflow_error("Neither username nor mail given") if (!keys %$param);
 
     my $res=CTX('api2')->search_users_count(%$param);
 
     if ($res==0) {
-        condition_error("No user was found for the given search criteria");
+        workflow_error("No user was found for the given search criteria");
     }
     return 1;
 }

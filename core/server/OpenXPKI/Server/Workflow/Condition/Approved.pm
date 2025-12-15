@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Serialization::Simple;
 
@@ -89,7 +89,7 @@ sub evaluate
     {
         my $errors = [[ 'I18N_OPENXPKI_SERVER_WORKFLOW_CONDITION_APPROVED_MISSING_APPROVAL' ]];
         $context->param ("__error" => $errors);
-        condition_error ($errors->[0]);
+        workflow_error ($errors->[0]);
     }
 
     return 1;

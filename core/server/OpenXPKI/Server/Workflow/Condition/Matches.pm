@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 sub _evaluate {
 
@@ -31,7 +31,7 @@ sub _evaluate {
     $self->log->info("Evaluate $key to match reference value");
 
     ##! 32: $value
-    condition_error('value does not match regex') unless($value =~ $regex);
+    workflow_error('value does not match regex') unless($value =~ $regex);
 
     return 1;
 

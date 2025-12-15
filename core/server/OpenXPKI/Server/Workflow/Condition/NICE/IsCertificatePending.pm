@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 
 sub evaluate {
@@ -12,7 +12,7 @@ sub evaluate {
     my ( $self, $workflow ) = @_;
     my $context = $workflow->context();
 
-    condition_error("I18N_OPENXPKI_SERVER_CONNECTOR_VICE_CONDITION_CERTIFICATE_NOT_PENDING") unless $context->param('cert_identifier') eq 'pending';
+    workflow_error("I18N_OPENXPKI_SERVER_CONNECTOR_VICE_CONDITION_CERTIFICATE_NOT_PENDING") unless $context->param('cert_identifier') eq 'pending';
 
     return 1;
 }

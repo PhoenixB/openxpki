@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::DateTime;
 
@@ -29,7 +29,7 @@ sub _evaluate
 
     ##! 32: 'Probe ' . $probe . ' nb: ' . $notbefore  . ' - na: ' . $notafter
 
-    condition_error ("DateTime context value ($key) to test is missing or empty") unless ($probe);
+    workflow_error ("DateTime context value ($key) to test is missing or empty") unless ($probe);
 
     my $dt_probe = OpenXPKI::DateTime::get_validity({
         VALIDITY => $probe,
@@ -49,7 +49,7 @@ sub _evaluate
         if ($dt_probe <= $dt_notbefore) {
             CTX('log')->application()->debug("DateTime condition failed $key $dt_probe < $dt_notbefore");
 
-            condition_error ("$key $dt_probe is less then notbefore $dt_notbefore");
+            workflow_error ("$key $dt_probe is less then notbefore $dt_notbefore");
         }
         CTX('log')->application()->debug("DateTime condition passed $key $dt_probe > $dt_notbefore");
 
@@ -67,7 +67,7 @@ sub _evaluate
         if ($dt_probe >= $dt_notafter) {
             CTX('log')->application()->debug("DateTime condition failed - $key $dt_probe > $dt_notafter");
 
-            condition_error ("$key $dt_probe is larger then notafter $dt_notafter");
+            workflow_error ("$key $dt_probe is larger then notafter $dt_notafter");
         }
 
         CTX('log')->application()->debug("DateTime condition passed $key $dt_probe < $dt_notafter");

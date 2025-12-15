@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 
 sub _evaluate
@@ -20,31 +20,31 @@ sub _evaluate
     my $value = $self->_from_context($key);
     ##! 32: $value
 
-    condition_error('trueish value is undefined') unless(defined $value);
+    workflow_error('trueish value is undefined') unless(defined $value);
 
     # value is scalar
     if (!ref $value) {
-        condition_error('trueish value is empty')
+        workflow_error('trueish value is empty')
             unless($value ne "");
 
-        condition_error('trueish value is zero')
+        workflow_error('trueish value is zero')
             unless($value !~ m{\A0+(.0+)?\z});
 
     # value is a hash
     } elsif (ref $value eq 'HASH') {
 
-        condition_error('trueish value is empty hash')
+        workflow_error('trueish value is empty hash')
             unless(scalar (keys $value->%*));
 
     # value is a list
     } elsif (ref $value eq 'ARRAY') {
 
-        condition_error('trueish value is empty list')
+        workflow_error('trueish value is empty list')
             unless(scalar (keys $value->@*));
 
     } else {
 
-        condition_error('trueish value is of unsupported type')
+        workflow_error('trueish value is of unsupported type')
 
     }
 

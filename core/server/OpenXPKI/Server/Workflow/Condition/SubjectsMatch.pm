@@ -4,7 +4,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::DN;
 
@@ -20,7 +20,7 @@ sub _evaluate {
     my $subject2 = $self->param('subject2') || '';
 
     if (!$subject1 || !$subject2) {
-        condition_error('subject match subject is empty');
+        workflow_error('subject match subject is empty');
     }
 
     if ($self->param('ignore_case')) {
@@ -37,7 +37,7 @@ sub _evaluate {
     }
 
     if (!$subject1 || $subject1 ne $subject2) {
-        condition_error('subject match subjects dont match');
+        workflow_error('subject match subjects dont match');
     }
     return 1;
     ##! 16: 'end'

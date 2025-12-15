@@ -6,7 +6,7 @@ use parent qw( OpenXPKI::Server::Workflow::Condition );
 use Convert::ASN1 ':tag';
 use Crypt::PKCS10;
 use MIME::Base64;
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 use OpenXPKI::Crypt::PKCS7;
 use OpenXPKI::Server::Context qw( CTX );
@@ -42,7 +42,7 @@ sub _evaluate {
         Crypt::PKCS10->new( $binary, verifySignature => 0 ) ||
             configuration_error('Looks like a regular PKCS10 but does not parse: ' . Crypt::PKCS10->error );
 
-        condition_error('Looks like a regular PKCS10 container');
+        workflow_error('Looks like a regular PKCS10 container');
     # or the encoded OID for signedData
     } elsif (substr($binary, $tagbytes+$lengthbytes, 11) eq "\x06\x09\x2A\x86\x48\x86\xF7\x0D\x01\x07\x02")  {
         my $payload;

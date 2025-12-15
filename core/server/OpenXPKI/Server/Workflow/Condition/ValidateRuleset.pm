@@ -5,7 +5,7 @@ use parent qw( OpenXPKI::Server::Workflow::Condition );
 
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Server::Workflow::Helpers;
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 
 sub _evaluate
 {
@@ -37,7 +37,7 @@ sub _evaluate
         my $err = '';
         map { $err .=  $_.': '.($input->{$_} // '?') } @{$result};
         CTX('log')->application()->debug("Ruleset validation failed: $err");
-        condition_error("Invalid parameters used: $err");
+        workflow_error("Invalid parameters used: $err");
     }
 
     ##! 1: 'Validation succeeded'

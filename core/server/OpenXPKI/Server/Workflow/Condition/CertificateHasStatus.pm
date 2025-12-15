@@ -3,7 +3,7 @@ use OpenXPKI;
 
 use parent qw( OpenXPKI::Server::Workflow::Condition );
 
-use Workflow::Exception qw( condition_error configuration_error );
+use Workflow::Exception qw( workflow_error configuration_error );
 use OpenXPKI::Server::Context qw( CTX );
 use OpenXPKI::Serialization::Simple;
 
@@ -18,7 +18,7 @@ sub _evaluate {
 
     if (!$identifier) {
         if ($self->param('empty_ok')) {
-            condition_error('No identifier passed to CertificateHasStatus') ;
+            workflow_error('No identifier passed to CertificateHasStatus') ;
         } else {
             configuration_error('No identifier passed to CertificateHasStatus');
         }
@@ -42,27 +42,27 @@ sub _evaluate {
     if (not $cert) {
         ##! 16: 'cert not found '
         CTX('log')->application()->debug("Cert status check failed, certificate not found " . $identifier);
-        condition_error 'certificate has status cert not found';
+        workflow_error 'certificate has status cert not found';
     }
 
     ##! 16: 'status: ' . $cert->{'STATUS'}
     if ( $expected_status eq 'EXPIRED' && $cert->{status} eq 'ISSUED') {
         if ($cert->{notafter} > time()) {
             CTX('log')->application()->debug("Cert status check failed: certificate is not yet expired");
-            condition_error 'certificate is not yet expired';
+            workflow_error 'certificate is not yet expired';
         }
     } elsif ( $expected_status eq 'VALID' && $cert->{status} eq 'ISSUED') {
         if ($cert->{notafter} < time()) {
             CTX('log')->application()->debug("Cert status check failed: certificate has expired");
-            condition_error 'certificate has expired';
+            workflow_error 'certificate has expired';
         }
         if ($cert->{notbefore} > time()) {
             CTX('log')->application()->debug("Cert status check failed: certificate is not yet valid");
-            condition_error 'certificate is not yet valid';
+            workflow_error 'certificate is not yet valid';
         }
     } elsif ($cert->{status} ne $expected_status) {
         CTX('log')->application()->debug("Cert status check failed: ".$cert->{status}. " != ".$expected_status);
-        condition_error 'certificate status does not match';
+        workflow_error 'certificate status does not match';
     }
 
     return 1;
