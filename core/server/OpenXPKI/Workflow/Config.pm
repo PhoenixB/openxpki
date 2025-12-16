@@ -339,7 +339,7 @@ sub __process_actions {
             push @fields, {
                 name => $field->{context_key},
                 is_required => 'no',
-                class => 'OpenXPKI::Server::Workflow::Field', # Workflow::Action::InputField always sets type to "basic"
+                class => 'OpenXPKI::Server::Workflow::Field', # Workflow::InputField always sets type to "basic"
                 type => $field->{type},
             };
             $self->logger()->debug("- adding field $field_name / $field->{context_key}");

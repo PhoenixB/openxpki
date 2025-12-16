@@ -1,7 +1,7 @@
 package OpenXPKI::Server::Workflow::Field;
 use OpenXPKI;
 
-use parent qw( Workflow::Action::InputField );
+use parent qw( Workflow::InputField );
 
 sub init {
     my ( $self, $params ) = @_;
@@ -27,5 +27,5 @@ Base class for OpenXPKI Workflow Action Fields.
 
 =head2 init
 
-Fixes a bug in L<Workflow::Action::InputField> where the C<type> parameter is
+Fixes a bug in L<Workflow::InputField> where the C<type> parameter is
 always overwritten with value "basic".
